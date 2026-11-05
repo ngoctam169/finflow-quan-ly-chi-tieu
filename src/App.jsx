@@ -80,7 +80,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState('2026-11');
   const [hideBalance, setHideBalance] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(true);
 
   // Data States (Initialized immediately with seed data for 0ms first render)
   const [wallets, setWallets] = useState(INITIAL_WALLETS);
