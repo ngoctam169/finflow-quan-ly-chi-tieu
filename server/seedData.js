@@ -1,61 +1,70 @@
 export const INITIAL_WALLETS = [
   {
-    id: 'w_bank',
-    name: 'Ngân hàng Vietcombank',
-    type: 'bank',
-    balance: 34600000,
-    color: '#059669',
-    icon: 'Landmark',
-    account_number: '•••• 8868'
-  },
-  {
-    id: 'w_momo',
-    name: 'Ví điện tử MoMo',
-    type: 'ewallet',
-    balance: 4250000,
-    color: '#db2777',
-    icon: 'Smartphone',
-    account_number: '098•••689'
-  },
-  {
     id: 'w_cash',
     name: 'Tiền mặt (Ví cá nhân)',
     type: 'cash',
-    balance: 2850000,
+    balance: 0,
     color: '#d97706',
     icon: 'Wallet',
-    account_number: 'Tiền mặt'
+    account_number: 'Tiền mặt hàng ngày'
+  },
+  {
+    id: 'w_bank',
+    name: 'Tài khoản Ngân hàng',
+    type: 'bank',
+    balance: 0,
+    color: '#059669',
+    icon: 'Landmark',
+    account_number: 'Chuyển khoản / Thẻ ATM'
+  },
+  {
+    id: 'w_momo',
+    name: 'Ví điện tử (MoMo / ZaloPay)',
+    type: 'ewallet',
+    balance: 0,
+    color: '#db2777',
+    icon: 'Smartphone',
+    account_number: 'Thanh toán nhanh'
   },
   {
     id: 'w_saving',
-    name: 'Tích lũy & Đầu tư',
+    name: 'Quỹ Tiết kiệm / Đầu tư',
     type: 'saving',
-    balance: 65000000,
+    balance: 0,
     color: '#2563eb',
     icon: 'PiggyBank',
-    account_number: 'Lãi 6.2%/năm'
+    account_number: 'Tích lũy dài hạn'
   }
 ];
 
 export const INITIAL_CATEGORIES = [
-  // Expense Categories
+  // Danh mục Chi tiêu thiết yếu cho cuộc sống hàng ngày
   {
     id: 'cat_food',
-    name: 'Ăn uống & Thực phẩm',
+    name: 'Ăn uống hàng ngày',
     type: 'expense',
     icon: 'Utensils',
     color: '#f97316',
     group_rule: 'needs',
-    keywords: ['ăn', 'cơm', 'phở', 'bún', 'mì', 'bánh', 'chợ', 'siêu thị', 'winmart', 'bachhoaxanh', 'trưa', 'tối', 'sáng', 'lẩu', 'nướng']
+    keywords: ['ăn', 'cơm', 'phở', 'bún', 'mì', 'bánh', 'trưa', 'tối', 'sáng', 'lẩu', 'nướng', 'nhà hàng', 'quán']
+  },
+  {
+    id: 'cat_grocery',
+    name: 'Đi chợ & Siêu thị',
+    type: 'expense',
+    icon: 'ShoppingBag',
+    color: '#10b981',
+    group_rule: 'needs',
+    keywords: ['đi chợ', 'chợ', 'siêu thị', 'winmart', 'bachhoaxanh', 'coopmart', 'rau', 'thịt', 'cá', 'trái cây', 'sữa', 'nấu ăn', 'thực phẩm']
   },
   {
     id: 'cat_coffee',
-    name: 'Cà phê & Đồ uống',
+    name: 'Cà phê & Trà sữa',
     type: 'expense',
     icon: 'Coffee',
     color: '#d97706',
     group_rule: 'wants',
-    keywords: ['cà phê', 'cafe', 'coffee', 'highlands', 'phúc long', 'trà sữa', 'katinat', 'starbucks', 'sinh tố', 'nước ép']
+    keywords: ['cà phê', 'cafe', 'coffee', 'highlands', 'phúc long', 'trà sữa', 'katinat', 'starbucks', 'sinh tố', 'nước ép', 'trà']
   },
   {
     id: 'cat_transport',
@@ -64,29 +73,29 @@ export const INITIAL_CATEGORIES = [
     icon: 'Car',
     color: '#3b82f6',
     group_rule: 'needs',
-    keywords: ['xăng', 'đổ xăng', 'grab', 'be', 'xanh sm', 'taxi', 'gửi xe', 'vé xe', 'bảo dưỡng', 'rửa xe']
+    keywords: ['xăng', 'đổ xăng', 'grab', 'be', 'xanh sm', 'taxi', 'gửi xe', 'vé xe', 'bảo dưỡng', 'rửa xe', 'thay nhớt', 'sửa xe']
   },
   {
     id: 'cat_housing',
-    name: 'Tiền nhà & Hóa đơn',
+    name: 'Tiền nhà & Điện nước',
     type: 'expense',
     icon: 'Home',
     color: '#6366f1',
     group_rule: 'needs',
-    keywords: ['thuê nhà', 'tiền nhà', 'điện', 'nước', 'internet', 'wifi', 'fpt', 'viettel', 'rác', 'phí quản lý', 'điện thoại', '4g']
+    keywords: ['thuê nhà', 'tiền nhà', 'tiền trọ', 'điện', 'nước', 'internet', 'wifi', 'fpt', 'viettel', 'rác', 'phí quản lý', 'điện thoại', '4g', '5g', 'nạp thẻ']
   },
   {
     id: 'cat_shopping',
-    name: 'Mua sắm & Cá nhân',
+    name: 'Mua sắm & Đồ dùng',
     type: 'expense',
-    icon: 'ShoppingBag',
+    icon: 'CreditCard',
     color: '#ec4899',
     group_rule: 'wants',
-    keywords: ['shopee', 'lazada', 'tiktok', 'mua', 'áo', 'quần', 'giày', 'mỹ phẩm', 'skincare', 'cắt tóc', 'đồ gia dụng']
+    keywords: ['shopee', 'lazada', 'tiktok', 'mua', 'áo', 'quần', 'giày', 'mỹ phẩm', 'skincare', 'cắt tóc', 'gội đầu', 'đồ gia dụng', 'quần áo']
   },
   {
     id: 'cat_entertainment',
-    name: 'Giải trí & Hội họp',
+    name: 'Giải trí & Gặp gỡ',
     type: 'expense',
     icon: 'Gamepad2',
     color: '#8b5cf6',
@@ -100,7 +109,7 @@ export const INITIAL_CATEGORIES = [
     icon: 'HeartPulse',
     color: '#ef4444',
     group_rule: 'needs',
-    keywords: ['thuốc', 'khám', 'bệnh viện', 'gym', 'yoga', 'chạy bộ', 'cầu lông', 'bơi', 'vitamin', 'nha khoa']
+    keywords: ['thuốc', 'khám', 'bệnh viện', 'gym', 'yoga', 'chạy bộ', 'cầu lông', 'bơi', 'vitamin', 'nha khoa', 'bảo hiểm']
   },
   {
     id: 'cat_education',
@@ -118,7 +127,7 @@ export const INITIAL_CATEGORIES = [
     icon: 'Users',
     color: '#14b8a6',
     group_rule: 'needs',
-    keywords: ['biếu', 'bố mẹ', 'đám cưới', 'mừng cưới', 'lì xì', 'thăm bệnh', 'quà']
+    keywords: ['biếu', 'bố mẹ', 'gia đình', 'đám cưới', 'mừng cưới', 'lì xì', 'thăm bệnh', 'quà', 'từ thiện']
   },
   {
     id: 'cat_invest_out',
@@ -129,7 +138,7 @@ export const INITIAL_CATEGORIES = [
     group_rule: 'savings',
     keywords: ['tiết kiệm', 'gửi góp', 'chứng khoán', 'cổ phiếu', 'vàng', 'quỹ mở', 'etf']
   },
-  // Income Categories
+  // Danh mục Thu nhập thiết yếu
   {
     id: 'cat_salary',
     name: 'Lương chính thức',
@@ -141,12 +150,12 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_freelance',
-    name: 'Freelance & Dự án',
+    name: 'Thu nhập phụ & Freelance',
     type: 'income',
     icon: 'Laptop',
     color: '#0ea5e9',
     group_rule: 'income',
-    keywords: ['freelance', 'dự án', 'job ngoài', 'thiết kế', 'code', 'tư vấn', 'hoa hồng']
+    keywords: ['freelance', 'dự án', 'job ngoài', 'làm thêm', 'kinh doanh', 'bán hàng', 'hoa hồng']
   },
   {
     id: 'cat_bonus',
@@ -159,333 +168,140 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_gift',
-    name: 'Quà tặng & Thu khác',
+    name: 'Được tặng & Thu khác',
     type: 'income',
     icon: 'Gift',
     color: '#a855f7',
     group_rule: 'income',
-    keywords: ['được tặng', 'lì xì', 'bán đồ cũ', 'pass đồ']
+    keywords: ['được tặng', 'lì xì', 'bán đồ cũ', 'pass đồ', 'thu khác']
   }
 ];
 
-export const INITIAL_BUDGETS = [
-  { category_id: 'cat_food', monthly_limit: 5000000 },
-  { category_id: 'cat_housing', monthly_limit: 6500000 },
-  { category_id: 'cat_shopping', monthly_limit: 2500000 },
-  { category_id: 'cat_transport', monthly_limit: 1500000 },
-  { category_id: 'cat_entertainment', monthly_limit: 1800000 },
-  { category_id: 'cat_coffee', monthly_limit: 900000 },
-  { category_id: 'cat_health', monthly_limit: 1200000 },
-  { category_id: 'cat_education', monthly_limit: 1500000 },
-  { category_id: 'cat_family', monthly_limit: 2000000 }
+// Khởi đầu hoàn toàn trống (0 giao dịch, 0 định mức, 0 hũ mẫu) để người dùng tự nhập
+export const INITIAL_BUDGETS = [];
+export const INITIAL_GOALS = [];
+export const INITIAL_RECURRING = [];
+export const INITIAL_TRANSACTIONS = [];
+
+// Gợi ý thông minh cho cuộc sống hàng ngày (chỉ điền sẵn tên gợi ý, người dùng tự gõ số tiền thực tế)
+export const QUICK_TEMPLATES = [
+  { label: '🍜 Ăn sáng / Ăn trưa', draftText: 'Ăn trưa ', category_id: 'cat_food', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 45k)' },
+  { label: '🛒 Đi chợ / Siêu thị', draftText: 'Đi chợ mua thực phẩm ', category_id: 'cat_grocery', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 150k)' },
+  { label: '☕ Cà phê / Trà sữa', draftText: 'Cà phê ', category_id: 'cat_coffee', wallet_id: 'w_momo', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 35k)' },
+  { label: '⛽ Đổ xăng / Gửi xe', draftText: 'Đổ xăng xe máy ', category_id: 'cat_transport', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 70k)' },
+  { label: '🏠 Tiền nhà / Điện nước', draftText: 'Thanh toán hóa đơn ', category_id: 'cat_housing', wallet_id: 'w_bank', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 500k)' },
+  { label: '🛍️ Mua sắm cá nhân', draftText: 'Mua đồ ', category_id: 'cat_shopping', wallet_id: 'w_bank', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 200k)' },
+  { label: '💊 Thuốc men / Y tế', draftText: 'Mua thuốc / chăm sóc sức khỏe ', category_id: 'cat_health', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 100k)' },
+  { label: '💼 Nhận lương / Thu nhập', draftText: 'Lương tháng ', category_id: 'cat_salary', wallet_id: 'w_bank', type: 'income', placeholderHint: 'Gõ tiếp số tiền (VD: 15tr)' }
 ];
 
-export const INITIAL_GOALS = [
+export const RECURRING_SUGGESTIONS = [
   {
-    id: 'goal_emergency',
-    name: 'Quỹ dự phòng khẩn cấp (6 tháng)',
-    target_amount: 100000000,
-    current_amount: 65000000,
-    deadline: '2027-03-31',
-    icon: 'ShieldCheck',
-    color: '#10b981',
-    note: 'Đảm bảo an toàn tài chính cá nhân trước mọi biến cố'
-  },
-  {
-    id: 'goal_macbook',
-    name: 'Nâng cấp MacBook Pro M4',
-    target_amount: 42000000,
-    current_amount: 29400000,
-    deadline: '2026-12-25',
-    icon: 'Laptop',
-    color: '#3b82f6',
-    note: 'Phục vụ công việc lập trình & dự án Freelance'
-  },
-  {
-    id: 'goal_travel',
-    name: 'Du lịch Nhật Bản (Tokyo - Kyoto)',
-    target_amount: 35000000,
-    current_amount: 15750000,
-    deadline: '2027-04-15',
-    icon: 'Plane',
-    color: '#8b5cf6',
-    note: 'Tự thưởng sau 1 năm làm việc chăm chỉ'
-  }
-];
-
-export const INITIAL_RECURRING = [
-  {
-    id: 'rec_rent',
-    title: 'Tiền thuê căn hộ Studio + Phí quản lý',
-    amount: 5500000,
+    title: 'Tiền thuê nhà / Phòng trọ',
     category_id: 'cat_housing',
     wallet_id: 'w_bank',
     due_day: 1,
-    last_paid_month: '2026-11',
-    active: true
+    suggestedAmounts: ['3000000', '4500000', '6000000']
   },
   {
-    id: 'rec_gym',
-    title: 'Thẻ hội viên Gym & Bơi lội',
-    amount: 600000,
-    category_id: 'cat_health',
-    wallet_id: 'w_momo',
-    due_day: 5,
-    last_paid_month: '2026-10',
-    active: true
+    title: 'Hóa đơn Tiền Điện sinh hoạt',
+    category_id: 'cat_housing',
+    wallet_id: 'w_bank',
+    due_day: 10,
+    suggestedAmounts: ['300000', '600000', '1000000']
   },
   {
-    id: 'rec_utilities',
-    title: 'Hóa đơn Điện + Nước + Internet FPT',
-    amount: 850000,
+    title: 'Hóa đơn Tiền Nước sinh hoạt',
     category_id: 'cat_housing',
     wallet_id: 'w_momo',
-    due_day: 10,
-    last_paid_month: '2026-10',
-    active: true
+    due_day: 12,
+    suggestedAmounts: ['100000', '150000', '250000']
   },
   {
-    id: 'rec_subs',
-    title: 'Combo YouTube Premium + iCloud + Spotify',
-    amount: 189000,
-    category_id: 'cat_entertainment',
+    title: 'Internet / Wifi cáp quang',
+    category_id: 'cat_housing',
     wallet_id: 'w_momo',
     due_day: 15,
-    last_paid_month: '2026-10',
-    active: true
-  }
-];
-
-export const INITIAL_TRANSACTIONS = [
-  // Tháng 11/2026 (Current Month up to 2026-11-05)
-  {
-    id: 'tx_1105_1',
-    title: 'Ăn trưa Phở bò tái lăn cùng đồng nghiệp',
-    amount: 65000,
-    type: 'expense',
-    category_id: 'cat_food',
-    wallet_id: 'w_cash',
-    tx_date: '2026-11-05',
-    note: 'Quán Phở Thìn góc phố',
-    tags: ['ăntrưa', 'côngsở']
+    suggestedAmounts: ['180000', '220000', '300000']
   },
   {
-    id: 'tx_1105_2',
-    title: 'Cà phê Cold Brew Highlands sáng',
-    amount: 55000,
-    type: 'expense',
-    category_id: 'cat_coffee',
+    title: 'Gói cước Di động 4G / 5G',
+    category_id: 'cat_housing',
     wallet_id: 'w_momo',
-    tx_date: '2026-11-05',
-    note: 'Giảm 10k qua mã ưu đãi MoMo',
-    tags: ['cafe', 'buổisáng']
+    due_day: 5,
+    suggestedAmounts: ['90000', '120000', '150000']
   },
   {
-    id: 'tx_1104_1',
-    title: 'Thanh toán dự án Freelance Landing Page',
-    amount: 6500000,
-    type: 'income',
-    category_id: 'cat_freelance',
-    wallet_id: 'w_bank',
-    tx_date: '2026-11-04',
-    note: 'Khách hàng chuyển khoản đợt cuối 100%',
-    tags: ['freelance', 'react']
-  },
-  {
-    id: 'tx_1104_2',
-    title: 'Đi siêu thị WinMart mua thực phẩm tuần',
-    amount: 485000,
-    type: 'expense',
-    category_id: 'cat_food',
-    wallet_id: 'w_momo',
-    tx_date: '2026-11-04',
-    note: 'Thịt bò, cá hồi, rau củ, sữa tươi',
-    tags: ['nấuăn', 'siêuthị']
-  },
-  {
-    id: 'tx_1104_3',
-    title: 'Đổ đầy bình xăng RON 95-V',
-    amount: 85000,
-    type: 'expense',
+    title: 'Phí gửi xe tháng / Phí quản lý',
     category_id: 'cat_transport',
     wallet_id: 'w_cash',
-    tx_date: '2026-11-04',
-    note: 'Cây xăng Petrolimex',
-    tags: ['xăngxe']
+    due_day: 5,
+    suggestedAmounts: ['120000', '150000', '500000']
   },
   {
-    id: 'tx_1103_1',
-    title: 'Mua áo sơ mi Uniqlo & tất kháng khuẩn',
-    amount: 690000,
-    type: 'expense',
-    category_id: 'cat_shopping',
+    title: 'Thẻ tập Gym / Thể thao / Yoga',
+    category_id: 'cat_health',
     wallet_id: 'w_bank',
-    tx_date: '2026-11-03',
-    note: 'Uniqlo Vincom Đồng Khởi',
-    tags: ['thờitrang', 'côngsở']
-  },
-  {
-    id: 'tx_1103_2',
-    title: 'Cơm tấm sườn bì chả + Trà đá',
-    amount: 55000,
-    type: 'expense',
-    category_id: 'cat_food',
-    wallet_id: 'w_cash',
-    tx_date: '2026-11-03',
-    note: 'Bữa trưa văn phòng',
-    tags: ['ăntrưa']
-  },
-  {
-    id: 'tx_1102_1',
-    title: 'Trích quỹ tích lũy định kỳ đầu tháng',
-    amount: 4000000,
-    type: 'expense',
-    category_id: 'cat_invest_out',
-    wallet_id: 'w_bank',
-    tx_date: '2026-11-02',
-    note: 'Kỷ luật tài chính: Trả cho bản thân trước (Pay yourself first)',
-    tags: ['tiếtkiệm', 'kỷluật']
-  },
-  {
-    id: 'tx_1102_2',
-    title: 'Lẩu nấm Ashima cuối tuần cùng bạn bè',
-    amount: 420000,
-    type: 'expense',
-    category_id: 'cat_entertainment',
-    wallet_id: 'w_momo',
-    tx_date: '2026-11-02',
-    note: 'Chia bill nhóm 4 người',
-    tags: ['cuốituần', 'bạnbè']
-  },
-  {
-    id: 'tx_1101_1',
-    title: 'Lương chính thức tháng 11/2026',
-    amount: 24500000,
-    type: 'income',
-    category_id: 'cat_salary',
-    wallet_id: 'w_bank',
-    tx_date: '2026-11-01',
-    note: 'Lương cứng + Phụ cấp ăn trưa & chuyên cần',
-    tags: ['lương', 'tháng11']
-  },
-  {
-    id: 'tx_1101_2',
-    title: 'Tiền thuê căn hộ Studio + Phí quản lý T11',
-    amount: 5500000,
-    type: 'expense',
-    category_id: 'cat_housing',
-    wallet_id: 'w_bank',
-    tx_date: '2026-11-01',
-    note: 'Chuyển khoản chủ nhà đúng hạn ngày 01',
-    tags: ['tiềnnhà', 'cốđịnh']
-  },
-  {
-    id: 'tx_1101_3',
-    title: 'Gia hạn khóa học System Design & AI Engineering',
-    amount: 450000,
-    type: 'expense',
-    category_id: 'cat_education',
-    wallet_id: 'w_momo',
-    tx_date: '2026-11-01',
-    note: 'Đầu tư nâng cấp kỹ năng chuyên môn',
-    tags: ['họctập', 'kỹnăng']
-  },
-  // Tháng 10/2026 (Previous Month for Historical Comparison)
-  {
-    id: 'tx_1001_1',
-    title: 'Lương chính thức tháng 10/2026',
-    amount: 24500000,
-    type: 'income',
-    category_id: 'cat_salary',
-    wallet_id: 'w_bank',
-    tx_date: '2026-10-01',
-    note: 'Lương tháng 10 chuyển khoản Vietcombank',
-    tags: ['lương', 'tháng10']
-  },
-  {
-    id: 'tx_1002_1',
-    title: 'Tiền thuê căn hộ Studio + Phí quản lý T10',
-    amount: 5500000,
-    type: 'expense',
-    category_id: 'cat_housing',
-    wallet_id: 'w_bank',
-    tx_date: '2026-10-02',
-    note: 'Thanh toán tiền nhà tháng 10',
-    tags: ['tiềnnhà']
-  },
-  {
-    id: 'tx_1008_1',
-    title: 'Thưởng KPI Quý 3 + Hoàn thành dự án sớm',
-    amount: 4500000,
-    type: 'income',
-    category_id: 'cat_bonus',
-    wallet_id: 'w_bank',
-    tx_date: '2026-10-08',
-    note: 'Thưởng hiệu suất công việc xuất sắc',
-    tags: ['thưởng', 'kpi']
-  },
-  {
-    id: 'tx_1012_1',
-    title: 'Tổng chi phí ăn uống & siêu thị nửa đầu T10',
-    amount: 2350000,
-    type: 'expense',
-    category_id: 'cat_food',
-    wallet_id: 'w_momo',
-    tx_date: '2026-10-12',
-    note: 'Ăn trưa văn phòng + nấu ăn tối tại nhà',
-    tags: ['ănuống']
-  },
-  {
-    id: 'tx_1018_1',
-    title: 'Mua tai nghe chống ồn làm việc tập trung',
-    amount: 1890000,
-    type: 'expense',
-    category_id: 'cat_shopping',
-    wallet_id: 'w_bank',
-    tx_date: '2026-10-18',
-    note: 'Săn sale 10/10 trên Shopee Mall',
-    tags: ['côngnghệ', 'shopee']
-  },
-  {
-    id: 'tx_1020_1',
-    title: 'Quà 20/10 biếu mẹ và hoa tươi',
-    amount: 1500000,
-    type: 'expense',
-    category_id: 'cat_family',
-    wallet_id: 'w_bank',
-    tx_date: '2026-10-20',
-    note: 'Ngày Phụ nữ Việt Nam 20/10',
-    tags: ['giađình', '20/10']
-  },
-  {
-    id: 'tx_1025_1',
-    title: 'Tổng chi ăn uống & cà phê nửa cuối T10',
-    amount: 2180000,
-    type: 'expense',
-    category_id: 'cat_food',
-    wallet_id: 'w_cash',
-    tx_date: '2026-10-25',
-    note: 'Chi phí sinh hoạt ăn uống hàng ngày',
-    tags: ['ănuống']
-  },
-  {
-    id: 'tx_1028_1',
-    title: 'Gửi tiết kiệm tích lũy tháng 10',
-    amount: 5000000,
-    type: 'expense',
-    category_id: 'cat_invest_out',
-    wallet_id: 'w_saving',
-    tx_date: '2026-10-28',
-    note: 'Nạp vào Quỹ dự phòng khẩn cấp',
-    tags: ['tiếtkiệm']
+    due_day: 5,
+    suggestedAmounts: ['300000', '500000', '800000']
   }
 ];
 
-export const QUICK_TEMPLATES = [
-  { label: '🍜 Ăn trưa 50k', text: 'Ăn trưa văn phòng 50k', category_id: 'cat_food', amount: 50000, wallet_id: 'w_cash', type: 'expense' },
-  { label: '☕ Cà phê 45k', text: 'Cà phê sáng 45k ví momo', category_id: 'cat_coffee', amount: 45000, wallet_id: 'w_momo', type: 'expense' },
-  { label: '⛽ Đổ xăng 80k', text: 'Đổ xăng xe máy 80k', category_id: 'cat_transport', amount: 80000, wallet_id: 'w_cash', type: 'expense' },
-  { label: '🛒 Đi siêu thị 250k', text: 'Mua đồ siêu thị WinMart 250k ví momo', category_id: 'cat_food', amount: 250000, wallet_id: 'w_momo', type: 'expense' },
-  { label: '🛵 Grab / Di chuyển 40k', text: 'Đặt xe di chuyển 40k ví momo', category_id: 'cat_transport', amount: 40000, wallet_id: 'w_momo', type: 'expense' },
-  { label: '📦 Mua Shopee 180k', text: 'Mua đồ Shopee 180k ngân hàng', category_id: 'cat_shopping', amount: 180000, wallet_id: 'w_bank', type: 'expense' }
+export const GOAL_SUGGESTIONS = [
+  {
+    name: 'Quỹ dự phòng khẩn cấp (3–6 tháng sinh hoạt)',
+    icon: 'ShieldCheck',
+    color: '#10b981',
+    note: 'Bảo vệ bản thân và gia đình trước các chi phí đột xuất',
+    suggestedTargets: ['30000000', '50000000', '100000000']
+  },
+  {
+    name: 'Nâng cấp Laptop / Điện thoại làm việc',
+    icon: 'Laptop',
+    color: '#3b82f6',
+    note: 'Đầu tư công cụ phục vụ công việc và học tập',
+    suggestedTargets: ['15000000', '25000000', '40000000']
+  },
+  {
+    name: 'Quỹ Du lịch & Nghỉ dưỡng',
+    icon: 'Plane',
+    color: '#8b5cf6',
+    note: 'Tự thưởng chuyến đi trải nghiệm và tái tạo năng lượng',
+    suggestedTargets: ['5000000', '15000000', '30000000']
+  },
+  {
+    name: 'Quỹ Mua xe / Bảo dưỡng phương tiện',
+    icon: 'Car',
+    color: '#f59e0b',
+    note: 'Tích lũy nâng cấp phương tiện đi lại hàng ngày',
+    suggestedTargets: ['20000000', '45000000', '80000000']
+  },
+  {
+    name: 'Quỹ Học tập & Phát triển bản thân',
+    icon: 'GraduationCap',
+    color: '#06b6d4',
+    note: 'Khóa học chuyên môn, ngoại ngữ, chứng chỉ nghề nghiệp',
+    suggestedTargets: ['5000000', '10000000', '20000000']
+  },
+  {
+    name: 'Quỹ Biếu tặng Bố Mẹ & Gia đình',
+    icon: 'Users',
+    color: '#ec4899',
+    note: 'Chuẩn bị quà Tết, chăm sóc sức khỏe cho gia đình',
+    suggestedTargets: ['10000000', '20000000', '50000000']
+  }
 ];
+
+export const BUDGET_SUGGESTIONS = {
+  cat_food: [1500000, 3000000, 4500000],
+  cat_grocery: [1500000, 2500000, 4000000],
+  cat_coffee: [300000, 500000, 800000],
+  cat_transport: [500000, 1000000, 1500000],
+  cat_housing: [2500000, 4500000, 6500000],
+  cat_shopping: [500000, 1500000, 3000000],
+  cat_entertainment: [500000, 1000000, 2000000],
+  cat_health: [300000, 800000, 1500000],
+  cat_education: [500000, 1000000, 2000000],
+  cat_family: [500000, 1500000, 3000000],
+  cat_invest_out: [1000000, 3000000, 5000000]
+};

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Calculator, Calendar, Tag, FileText } from 'lucide-react';
+import { X, Check, Calculator, Calendar, Tag, FileText, Plus } from 'lucide-react';
 import { evaluateAmountExpression, formatVND } from '../utils/smartParser.js';
 import { DynamicIcon } from './IconMap.jsx';
 
@@ -19,7 +19,8 @@ export function TransactionModal({
   initialData,
   categories,
   wallets,
-  onSave
+  onSave,
+  onCreateCategory
 }) {
   const isEditing = Boolean(initialData?.id);
 
@@ -32,6 +33,9 @@ export function TransactionModal({
   const [note, setNote] = useState('');
   const [tagsText, setTagsText] = useState('');
   const [error, setError] = useState('');
+  const [newCatOpen, setNewCatOpen] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatRule, setNewCatRule] = useState('needs');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -47,6 +51,8 @@ export function TransactionModal({
     setNote(initialData?.note || '');
     setTagsText(Array.isArray(initialData?.tags) ? initialData.tags.join(', ') : '');
     setError('');
+    setNewCatOpen(false);
+    setNewCatName('');
   }, [isOpen, initialData]);
 
   if (!isOpen) return null;
@@ -59,6 +65,22 @@ export function TransactionModal({
     const firstCat = categories.find((c) => c.type === newType);
     if (firstCat) setCategoryId(firstCat.id);
     if (newType === 'income' && walletId === 'w_cash') setWalletId('w_bank');
+  };
+
+  const handleAddCustomCategory = async () => {
+    if (!newCatName.trim() || !onCreateCategory) return;
+    const created = await onCreateCategory({
+      name: newCatName.trim(),
+      type,
+      icon: type === 'income' ? 'Sparkles' : 'Tag',
+      color: type === 'income' ? '#10b981' : '#06b6d4',
+      group_rule: type === 'income' ? 'income' : newCatRule
+    });
+    if (created?.id) {
+      setCategoryId(created.id);
+    }
+    setNewCatName('');
+    setNewCatOpen(false);
   };
 
   const handleSubmit = async (e) => {
@@ -243,9 +265,52 @@ export function TransactionModal({
 
           {/* Category Grid */}
           <div>
-            <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-2">
-              Danh mục ({filteredCategories.length})
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold text-slate-600 dark:text-slate-300">
+                Chọn danh mục có sẵn ({filteredCategories.length})
+              </label>
+              {onCreateCategory && (
+                <button
+                  type="button"
+                  onClick={() => setNewCatOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Tạo danh mục mới
+                </button>
+              )}
+            </div>
+
+            {newCatOpen && (
+              <div className="mb-3 p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder="Tên danh mục (VD: Thú cưng, Trả góp, Bỉm sữa...)"
+                  className="flex-1 min-w-[180px] px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                />
+                {type === 'expense' && (
+                  <select
+                    value={newCatRule}
+                    onChange={(e) => setNewCatRule(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
+                  >
+                    <option value="needs">Nhóm Thiết yếu (50%)</option>
+                    <option value="wants">Nhóm Mong muốn (30%)</option>
+                    <option value="savings">Nhóm Tích lũy (20%)</option>
+                  </select>
+                )}
+                <button
+                  type="button"
+                  onClick={handleAddCustomCategory}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                >
+                  Thêm
+                </button>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-44 overflow-y-auto pr-1">
               {filteredCategories.map((cat) => {
                 const selected = categoryId === cat.id;

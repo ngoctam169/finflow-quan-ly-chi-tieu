@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ArrowLeftRight, Wallet, Check } from 'lucide-react';
+import { X, ArrowLeftRight, Wallet, Check, Trash2 } from 'lucide-react';
 import { evaluateAmountExpression, formatVND } from '../utils/smartParser.js';
 
 export function WalletModal({
@@ -9,6 +9,7 @@ export function WalletModal({
   initialMode = 'transfer',
   editingWallet = null,
   onSaveWallet,
+  onDeleteWallet,
   onTransfer
 }) {
   const [mode, setMode] = useState(initialMode);
@@ -274,6 +275,28 @@ export function WalletModal({
                 </div>
               </div>
 
+              {/* Quick Balance Suggestion Chips */}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="text-[11px] text-slate-400">Gợi ý điền nhanh:</span>
+                {[
+                  { label: '0 ₫', val: '0' },
+                  { label: '500k', val: '500000' },
+                  { label: '2 triệu', val: '2000000' },
+                  { label: '5 triệu', val: '5000000' },
+                  { label: '10 triệu', val: '10000000' },
+                  { label: '20 triệu', val: '20000000' }
+                ].map((s) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    onClick={() => setWalletBalance(s.val)}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 hover:text-emerald-700 text-[11px] font-medium cursor-pointer"
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-slate-600 dark:text-slate-300 mb-1">
@@ -311,7 +334,23 @@ export function WalletModal({
 
               {error && <p className="text-xs font-bold text-rose-600">{error}</p>}
 
-              <div className="pt-2 flex justify-end gap-2">
+              <div className="pt-2 flex items-center justify-between gap-2">
+                {editingWallet && onDeleteWallet && wallets.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDeleteWallet(editingWallet.id);
+                      onClose();
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Xóa ví này
+                  </button>
+                ) : (
+                  <span />
+                )}
+                <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={onClose}
@@ -326,6 +365,7 @@ export function WalletModal({
                   <Check className="w-4 h-4" />
                   Lưu nguồn tiền
                 </button>
+                </div>
               </div>
             </form>
           )}

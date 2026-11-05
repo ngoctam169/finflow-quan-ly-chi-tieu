@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Sparkles, Plus, ArrowRight, Zap, Check, SlidersHorizontal } from 'lucide-react';
 import { parseNaturalTransaction, formatVND, formatDateVN } from '../utils/smartParser.js';
 import { DynamicIcon } from './IconMap.jsx';
@@ -11,16 +11,19 @@ export function QuickAddBar({
   onOpenFullModal
 }) {
   const [text, setText] = useState('');
+  const [activeHint, setActiveHint] = useState('');
   const [justAdded, setJustAdded] = useState(null);
+  const inputRef = useRef(null);
+
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   const parsed = text.trim()
-    ? parseNaturalTransaction(text, categories, wallets, '2026-11-05')
+    ? parseNaturalTransaction(text, categories, wallets, todayStr)
     : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!parsed || !parsed.isValid) {
-      // Open full modal pre-filled with the title if amount wasn't typed
       onOpenFullModal({
         title: text.trim(),
         category_id: parsed?.category_id || 'cat_food',
@@ -37,28 +40,27 @@ export function QuickAddBar({
       category_id: parsed.category_id,
       wallet_id: parsed.wallet_id,
       tx_date: parsed.tx_date,
-      note: 'Ghi nhanh thông minh 3 giây',
-      tags: ['ghinhanh']
+      note: '',
+      tags: []
     });
 
     setJustAdded(parsed.title);
     setText('');
+    setActiveHint('');
     setTimeout(() => setJustAdded(null), 2400);
   };
 
-  const handleTemplateClick = async (tpl) => {
-    await onQuickSubmit({
-      title: tpl.text.replace(/\s+\d+k.*$/i, ''),
-      amount: tpl.amount,
-      type: tpl.type || 'expense',
-      category_id: tpl.category_id,
-      wallet_id: tpl.wallet_id,
-      tx_date: '2026-11-05',
-      note: 'Ghi nhanh 1 chạm từ mẫu thường dùng',
-      tags: ['1chạm']
-    });
-    setJustAdded(tpl.label);
-    setTimeout(() => setJustAdded(null), 2000);
+  const handleSuggestionClick = (tpl) => {
+    const draft = tpl.draftText || `${tpl.label.replace(/^[^\s]+\s/, '')} `;
+    setText(draft);
+    setActiveHint(tpl.placeholderHint || 'Hãy gõ tiếp số tiền thực tế của bạn (VD: 45k, 150k) rồi nhấn Enter');
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const len = draft.length;
+        inputRef.current.setSelectionRange(len, len);
+      }
+    }, 10);
   };
 
   return (
@@ -69,10 +71,10 @@ export function QuickAddBar({
             <Zap className="w-4 h-4" />
           </span>
           <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              Ghi Nhanh Thông Minh 3 Giây
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
+              Ghi Nhanh Giao Dịch Bằng Ngôn Ngữ Tự Nhiên
               <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                Tự động nhận diện số tiền & danh mục
+                Chọn gợi ý bên dưới hoặc tự gõ món + số tiền
               </span>
             </h2>
           </div>
@@ -84,7 +86,7 @@ export function QuickAddBar({
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 transition cursor-pointer"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          Mở bảng nhập chi tiết (Phím N)
+          Mở bảng nhập đầy đủ (Phím N)
         </button>
       </div>
 
@@ -94,10 +96,11 @@ export function QuickAddBar({
           <div className="relative flex-1">
             <Sparkles className="w-4 h-4 text-emerald-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
+              ref={inputRef}
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Gõ tự nhiên: VD 'Ăn trưa phở bò 65k', 'Cà phê 45k momo', 'Lương 25tr'..."
+              placeholder="Gõ khoản thu/chi của bạn: VD 'Ăn trưa 45k', 'Đi chợ 120k', 'Đổ xăng 70k', 'Lương 18tr'..."
               className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white dark:focus:bg-slate-800 transition"
             />
           </div>
@@ -106,17 +109,17 @@ export function QuickAddBar({
             className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-sm shadow-emerald-600/20 transition cursor-pointer shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Ghi ngay</span>
+            <span>{parsed?.isValid ? 'Lưu ngay' : 'Điền số tiền'}</span>
             <ArrowRight className="w-4 h-4 opacity-80" />
           </button>
         </div>
 
         {/* Real-time Smart Parser Preview Pill */}
         {parsed && (
-          <div className="mt-3 p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 flex flex-wrap items-center justify-between gap-2 text-xs animate-fadeIn">
+          <div className="mt-3 p-3 rounded-2xl bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/70 dark:border-emerald-800/60 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-semibold text-slate-500 dark:text-slate-400">
-                Nhận diện tự động:
+                Phân loại tự động:
               </span>
               <span
                 className={`px-2 py-0.5 rounded-lg font-bold ${
@@ -151,11 +154,11 @@ export function QuickAddBar({
             <div className="flex items-center gap-2">
               {parsed.isValid ? (
                 <span className="text-sm font-extrabold font-mono-num text-emerald-700 dark:text-emerald-300">
-                  {formatVND(parsed.amount)}
+                  {formatVND(parsed.amount)} (Nhấn Enter để lưu)
                 </span>
               ) : (
                 <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                  Hãy thêm số tiền (VD: 50k, 1.2tr)
+                  {activeHint || '👉 Gõ thêm số tiền thực tế của bạn (VD: 45k, 200k, 1.5tr)'}
                 </span>
               )}
             </div>
@@ -163,16 +166,16 @@ export function QuickAddBar({
         )}
       </form>
 
-      {/* 1-Click Quick Templates */}
+      {/* Everyday Life Suggestion Chips (Pre-fill category & title, user types their own amount) */}
       <div className="mt-3.5 flex items-center gap-2 overflow-x-auto pb-1">
         <span className="text-[11px] font-semibold text-slate-400 shrink-0">
-          Chạm 1 lần để ghi:
+          Gợi ý khoản thường gặp:
         </span>
         {quickTemplates.map((tpl, idx) => (
           <button
             key={idx}
             type="button"
-            onClick={() => handleTemplateClick(tpl)}
+            onClick={() => handleSuggestionClick(tpl)}
             className="px-2.5 py-1 rounded-xl text-xs font-medium bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/60 text-slate-700 hover:text-emerald-700 dark:text-slate-300 dark:hover:text-emerald-300 border border-slate-200/70 dark:border-slate-700 hover:border-emerald-300 transition shrink-0 cursor-pointer"
           >
             {tpl.label}
@@ -181,7 +184,7 @@ export function QuickAddBar({
         {justAdded && (
           <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-auto shrink-0">
             <Check className="w-3.5 h-3.5" />
-            Đã ghi: {justAdded}
+            Đã lưu: {justAdded}
           </span>
         )}
       </div>

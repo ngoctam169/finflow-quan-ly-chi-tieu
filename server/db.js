@@ -657,6 +657,72 @@ export async function upsertRecurringBill(payload) {
   return bill;
 }
 
+export async function upsertCategory(payload) {
+  await initDb();
+  const cat = {
+    id: payload.id || `cat_${Date.now()}`,
+    name: String(payload.name || 'Danh mục mới').trim(),
+    type: payload.type === 'income' ? 'income' : 'expense',
+    icon: payload.icon || 'Tag',
+    color: payload.color || '#10b981',
+    group_rule: payload.group_rule || (payload.type === 'income' ? 'income' : 'needs'),
+    keywords: Array.isArray(payload.keywords)
+      ? payload.keywords
+      : [String(payload.name || '').toLowerCase()]
+  };
+
+  if (dbMode === 'postgresql' && pool) {
+    await pool.query(
+      `INSERT INTO ff_categories (id, name, type, icon, color, group_rule, keywords)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+       ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+         type = EXCLUDED.type,
+         icon = EXCLUDED.icon,
+         color = EXCLUDED.color,
+         group_rule = EXCLUDED.group_rule,
+         keywords = EXCLUDED.keywords`,
+      [cat.id, cat.name, cat.type, cat.icon, cat.color, cat.group_rule, JSON.stringify(cat.keywords)]
+    );
+    return cat;
+  }
+
+  const idx = memoryStore.categories.findIndex((c) => c.id === cat.id);
+  if (idx !== -1) memoryStore.categories[idx] = cat;
+  else memoryStore.categories.push(cat);
+  return cat;
+}
+
+export async function deleteWallet(id) {
+  await initDb();
+  if (dbMode === 'postgresql' && pool) {
+    await pool.query('DELETE FROM ff_wallets WHERE id = $1', [id]);
+    return { deleted: true, id };
+  }
+  memoryStore.wallets = memoryStore.wallets.filter((w) => w.id !== id);
+  return { deleted: true, id };
+}
+
+export async function deleteGoal(id) {
+  await initDb();
+  if (dbMode === 'postgresql' && pool) {
+    await pool.query('DELETE FROM ff_goals WHERE id = $1', [id]);
+    return { deleted: true, id };
+  }
+  memoryStore.goals = memoryStore.goals.filter((g) => g.id !== id);
+  return { deleted: true, id };
+}
+
+export async function deleteRecurringBill(id) {
+  await initDb();
+  if (dbMode === 'postgresql' && pool) {
+    await pool.query('DELETE FROM ff_recurring WHERE id = $1', [id]);
+    return { deleted: true, id };
+  }
+  memoryStore.recurring = memoryStore.recurring.filter((r) => r.id !== id);
+  return { deleted: true, id };
+}
+
 export async function resetToDemoData() {
   await initDb();
   if (dbMode === 'postgresql' && pool) {

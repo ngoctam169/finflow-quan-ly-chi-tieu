@@ -7,11 +7,15 @@ import {
   updateTransaction,
   deleteTransaction,
   upsertWallet,
+  deleteWallet,
   transferBetweenWallets,
+  upsertCategory,
   upsertBudget,
   upsertGoal,
+  deleteGoal,
   contributeToGoal,
   upsertRecurringBill,
+  deleteRecurringBill,
   payRecurringBill,
   resetToDemoData
 } from './db.js';
@@ -91,6 +95,28 @@ app.post('/api/wallets', async (req, res) => {
   }
 });
 
+// 6b. Delete Wallet
+app.delete('/api/wallets/:id', async (req, res) => {
+  try {
+    await deleteWallet(req.params.id);
+    const state = await getFullState();
+    res.json({ ok: true, state });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+// 6c. Upsert Custom Category
+app.post('/api/categories', async (req, res) => {
+  try {
+    const category = await upsertCategory(req.body || {});
+    const state = await getFullState();
+    res.status(201).json({ ok: true, category, state });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
 // 7. Transfer Between Wallets
 app.post('/api/wallets/transfer', async (req, res) => {
   try {
@@ -124,6 +150,17 @@ app.post('/api/goals', async (req, res) => {
   }
 });
 
+// 9b. Delete Savings Goal
+app.delete('/api/goals/:id', async (req, res) => {
+  try {
+    await deleteGoal(req.params.id);
+    const state = await getFullState();
+    res.json({ ok: true, state });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
 // 10. Contribute to Savings Goal
 app.post('/api/goals/:id/contribute', async (req, res) => {
   try {
@@ -141,6 +178,17 @@ app.post('/api/recurring', async (req, res) => {
     const bill = await upsertRecurringBill(req.body || {});
     const state = await getFullState();
     res.json({ ok: true, bill, state });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+// 11b. Delete Recurring Bill
+app.delete('/api/recurring/:id', async (req, res) => {
+  try {
+    await deleteRecurringBill(req.params.id);
+    const state = await getFullState();
+    res.json({ ok: true, state });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }

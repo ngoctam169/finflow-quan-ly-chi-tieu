@@ -19,8 +19,6 @@ import {
   ArrowLeftRight,
   Calendar,
   CheckCircle2,
-  AlertTriangle,
-  Clock,
   Trash2,
   Edit3,
   Copy,
@@ -30,7 +28,6 @@ import {
   Wallet,
   RotateCcw,
   Undo2,
-  Filter,
   ListFilter
 } from 'lucide-react';
 import {
@@ -40,7 +37,10 @@ import {
   INITIAL_GOALS,
   INITIAL_RECURRING,
   INITIAL_TRANSACTIONS,
-  QUICK_TEMPLATES
+  QUICK_TEMPLATES,
+  RECURRING_SUGGESTIONS,
+  GOAL_SUGGESTIONS,
+  BUDGET_SUGGESTIONS
 } from './utils/defaultData.js';
 import {
   formatVND,
@@ -59,7 +59,7 @@ import { TransactionModal } from './components/TransactionModal.jsx';
 import { WalletModal } from './components/WalletModal.jsx';
 import { CalendarLedgerView } from './components/CalendarLedgerView.jsx';
 
-const STORAGE_KEY = 'finflow_vn_state_v1';
+const STORAGE_KEY = 'finflow_vn_state_v2_clean';
 
 const NAV_TABS = [
   { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -82,7 +82,7 @@ export default function App() {
   const [hideBalance, setHideBalance] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
 
-  // Data States (Initialized immediately with seed data for 0ms first render)
+  // Clean Initial State (0 transactions, 0 balances, essential wallets & categories pre-configured)
   const [wallets, setWallets] = useState(INITIAL_WALLETS);
   const [categories, setCategories] = useState(INITIAL_CATEGORIES);
   const [budgets, setBudgets] = useState(INITIAL_BUDGETS);
@@ -94,7 +94,7 @@ export default function App() {
   // Backend / Cloud PostgreSQL Sync State
   const [dbStatus, setDbStatus] = useState({
     mode: 'connecting',
-    provider: 'Đang đồng bộ Cloud PostgreSQL...',
+    provider: 'Cloud PostgreSQL (ap-southeast-1)',
     connected: true
   });
   const [isSyncing, setIsSyncing] = useState(false);
@@ -107,13 +107,13 @@ export default function App() {
   const [editingWallet, setEditingWallet] = useState(null);
 
   // Ledger Filters
-  const [ledgerViewMode, setLedgerViewMode] = useState('list'); // 'list' | 'calendar'
+  const [ledgerViewMode, setLedgerViewMode] = useState('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState('all'); // 'all' | 'expense' | 'income'
+  const [filterType, setFilterType] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterWallet, setFilterWallet] = useState('all');
   const [selectedDay, setSelectedDay] = useState(null);
-  const [sortBy, setSortBy] = useState('date_desc'); // 'date_desc' | 'amount_desc' | 'amount_asc'
+  const [sortBy] = useState('date_desc');
 
   // Budget Inline Editing
   const [editingBudgetCatId, setEditingBudgetCatId] = useState(null);
@@ -121,23 +121,28 @@ export default function App() {
 
   // Savings Goal & Recurring Forms
   const [contributeGoalId, setContributeGoalId] = useState(null);
-  const [contributeAmount, setContributeAmount] = useState('1000000');
-  const [contributeWalletId, setContributeWalletId] = useState('w_bank');
+  const [contributeAmount, setContributeAmount] = useState('');
+  const [contributeWalletId] = useState('w_bank');
   const [newGoalOpen, setNewGoalOpen] = useState(false);
   const [newGoalForm, setNewGoalForm] = useState({
     name: '',
-    target_amount: '20000000',
+    target_amount: '',
     current_amount: '0',
     deadline: '2027-06-30',
-    note: ''
+    icon: 'Target',
+    color: '#10b981',
+    note: '',
+    suggestedTargets: ['10000000', '30000000', '50000000']
   });
+
   const [newRecurringOpen, setNewRecurringOpen] = useState(false);
   const [newRecurringForm, setNewRecurringForm] = useState({
     title: '',
-    amount: '500000',
+    amount: '',
     category_id: 'cat_housing',
     wallet_id: 'w_bank',
-    due_day: '15'
+    due_day: '5',
+    suggestedAmounts: ['200000', '500000', '1500000']
   });
 
   // Toast & Undo
@@ -153,7 +158,6 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Apply Dark Mode class
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -199,20 +203,21 @@ export default function App() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     } catch {
-      // ignore storage quota errors
+      // ignore
     }
   }, []);
 
   const fetchCloudState = useCallback(async () => {
     setIsSyncing(true);
     try {
+      // Remove legacy demo localStorage key if present
+      localStorage.removeItem('finflow_vn_state_v1');
       const res = await fetch('/api/state');
       if (res.ok) {
         const data = await res.json();
         applyServerState(data);
       }
     } catch {
-      // Fallback to localStorage if offline
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) applyServerState(JSON.parse(saved));
@@ -228,7 +233,6 @@ export default function App() {
     fetchCloudState();
   }, [fetchCloudState]);
 
-  // Maps for fast lookup
   const categoryMap = useMemo(
     () => new Map(categories.map((c) => [c.id, c])),
     [categories]
@@ -238,7 +242,7 @@ export default function App() {
     [wallets]
   );
 
-  // Derived Financial Metrics for Selected Month
+  // Derived Metrics
   const monthTransactions = useMemo(() => {
     return transactions.filter((t) =>
       selectedMonth === 'ALL' ? true : String(t.tx_date).startsWith(selectedMonth)
@@ -275,12 +279,13 @@ export default function App() {
     [budgets]
   );
 
-  // Safe-to-spend daily calculation (Current date: 2026-11-05 -> 25 days left in Nov)
   const daysRemainingInMonth = selectedMonth === '2026-11' ? 25 : 15;
   const budgetRemaining = Math.max(0, totalMonthlyBudget - monthExpense);
-  const safeDailySpend = Math.round(budgetRemaining / Math.max(1, daysRemainingInMonth));
+  const safeDailySpend =
+    totalMonthlyBudget > 0
+      ? Math.round(budgetRemaining / Math.max(1, daysRemainingInMonth))
+      : 0;
 
-  // Filtered & Sorted Transactions for Ledger Tab
   const filteredLedgerTransactions = useMemo(() => {
     return monthTransactions
       .filter((tx) => {
@@ -314,7 +319,6 @@ export default function App() {
     categoryMap
   ]);
 
-  // Group ledger transactions by date
   const groupedTransactions = useMemo(() => {
     const groups = new Map();
     for (const tx of filteredLedgerTransactions) {
@@ -329,7 +333,7 @@ export default function App() {
     return Array.from(groups.values());
   }, [filteredLedgerTransactions]);
 
-  // CRUD Handlers (Optimistic UI + Cloud PostgreSQL API sync)
+  // CRUD Handlers
   const handleSaveTransaction = async (txData) => {
     const isEdit = Boolean(txData.id);
     try {
@@ -354,14 +358,10 @@ export default function App() {
         return;
       }
     } catch {
-      // Offline local fallback
+      // Offline fallback
     }
 
-    // Local optimistic fallback if offline
-    const newTx = {
-      ...txData,
-      id: txData.id || `tx_${Date.now()}`
-    };
+    const newTx = { ...txData, id: txData.id || `tx_${Date.now()}` };
     setTransactions((prev) =>
       isEdit ? prev.map((t) => (t.id === newTx.id ? newTx : t)) : [newTx, ...prev]
     );
@@ -371,7 +371,6 @@ export default function App() {
   const handleDeleteTransaction = async (id, silent = false) => {
     const target = transactions.find((t) => t.id === id);
     setTransactions((prev) => prev.filter((t) => t.id !== id));
-
     try {
       const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -381,13 +380,33 @@ export default function App() {
     } catch {
       // ignore
     }
-
     if (!silent && target) {
       showToast(`Đã xóa giao dịch "${target.title}"`, () => {
         const { id: _oldId, ...rest } = target;
         handleSaveTransaction(rest);
       });
     }
+  };
+
+  const handleCreateCategory = async (catData) => {
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(catData)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        applyServerState(data.state);
+        showToast(`Đã thêm danh mục mới: ${catData.name}`);
+        return data.category;
+      }
+    } catch {
+      // fallback
+    }
+    const localCat = { ...catData, id: `cat_${Date.now()}` };
+    setCategories((prev) => [...prev, localCat]);
+    return localCat;
   };
 
   const handleSaveWallet = async (walletData) => {
@@ -404,6 +423,19 @@ export default function App() {
       }
     } catch {
       showToast('Đã lưu ví nguồn tiền');
+    }
+  };
+
+  const handleDeleteWallet = async (walletId) => {
+    try {
+      const res = await fetch(`/api/wallets/${walletId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const data = await res.json();
+        applyServerState(data.state);
+        showToast('Đã xóa ví nguồn tiền');
+      }
+    } catch {
+      setWallets((prev) => prev.filter((w) => w.id !== walletId));
     }
   };
 
@@ -424,8 +456,11 @@ export default function App() {
     }
   };
 
-  const handleSaveBudget = async (category_id) => {
-    const limit = evaluateAmountExpression(budgetInputVal);
+  const handleSaveBudget = async (category_id, customVal = null) => {
+    const limit =
+      customVal !== null
+        ? Number(customVal)
+        : evaluateAmountExpression(budgetInputVal);
     setEditingBudgetCatId(null);
     try {
       const res = await fetch('/api/budgets', {
@@ -436,12 +471,20 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         applyServerState(data.state);
-        showToast('Đã cập nhật định mức ngân sách tháng');
+        showToast(
+          limit > 0
+            ? `Đã đặt định mức ngân sách: ${formatVND(limit)}`
+            : 'Đã xóa định mức ngân sách'
+        );
       }
     } catch {
-      setBudgets((prev) =>
-        prev.map((b) => (b.category_id === category_id ? { ...b, monthly_limit: limit } : b))
-      );
+      setBudgets((prev) => {
+        const exists = prev.some((b) => b.category_id === category_id);
+        if (exists) {
+          return prev.map((b) => (b.category_id === category_id ? { ...b, monthly_limit: limit } : b));
+        }
+        return [...prev, { category_id, monthly_limit: limit }];
+      });
     }
   };
 
@@ -469,13 +512,18 @@ export default function App() {
   const handleCreateGoal = async (e) => {
     e.preventDefault();
     if (!newGoalForm.name.trim()) return;
+    const target = evaluateAmountExpression(newGoalForm.target_amount);
+    if (target <= 0) {
+      showToast('Vui lòng nhập số tiền mục tiêu lớn hơn 0 ₫');
+      return;
+    }
     const payload = {
       name: newGoalForm.name.trim(),
-      target_amount: evaluateAmountExpression(newGoalForm.target_amount) || 10000000,
+      target_amount: target,
       current_amount: evaluateAmountExpression(newGoalForm.current_amount) || 0,
       deadline: newGoalForm.deadline || '2027-06-30',
-      icon: 'Target',
-      color: '#10b981',
+      icon: newGoalForm.icon || 'Target',
+      color: newGoalForm.color || '#10b981',
       note: newGoalForm.note.trim()
     };
     setNewGoalOpen(false);
@@ -492,6 +540,19 @@ export default function App() {
       }
     } catch {
       // ignore
+    }
+  };
+
+  const handleDeleteGoal = async (goalId) => {
+    try {
+      const res = await fetch(`/api/goals/${goalId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const data = await res.json();
+        applyServerState(data.state);
+        showToast('Đã xóa hũ mục tiêu');
+      }
+    } catch {
+      setGoals((prev) => prev.filter((g) => g.id !== goalId));
     }
   };
 
@@ -515,13 +576,18 @@ export default function App() {
   const handleCreateRecurring = async (e) => {
     e.preventDefault();
     if (!newRecurringForm.title.trim()) return;
+    const amt = evaluateAmountExpression(newRecurringForm.amount);
+    if (amt <= 0) {
+      showToast('Vui lòng nhập số tiền hóa đơn định kỳ lớn hơn 0 ₫');
+      return;
+    }
     const payload = {
       title: newRecurringForm.title.trim(),
-      amount: evaluateAmountExpression(newRecurringForm.amount) || 500000,
-      category_id: newRecurringForm.category_id,
-      wallet_id: newRecurringForm.wallet_id,
+      amount: amt,
+      category_id: newRecurringForm.category_id || 'cat_housing',
+      wallet_id: newRecurringForm.wallet_id || 'w_bank',
       due_day: Number(newRecurringForm.due_day) || 5,
-      last_paid_month: '2026-10'
+      last_paid_month: ''
     };
     setNewRecurringOpen(false);
     try {
@@ -533,23 +599,36 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         applyServerState(data.state);
-        showToast(`Đã thêm khoản định kỳ: ${payload.title}`);
+        showToast(`Đã lưu hóa đơn định kỳ: ${payload.title}`);
       }
     } catch {
       // ignore
     }
   };
 
-  const handleResetDemo = async () => {
+  const handleDeleteRecurring = async (billId) => {
+    try {
+      const res = await fetch(`/api/recurring/${billId}`, { method: 'DELETE' });
+      if (res.ok) {
+        const data = await res.json();
+        applyServerState(data.state);
+        showToast('Đã xóa khoản định kỳ');
+      }
+    } catch {
+      setRecurring((prev) => prev.filter((r) => r.id !== billId));
+    }
+  };
+
+  const handleResetClean = async () => {
     try {
       const res = await fetch('/api/reset-demo', { method: 'POST' });
       if (res.ok) {
         const data = await res.json();
         applyServerState(data.state);
-        showToast('Đã khôi phục dữ liệu mẫu ban đầu trên Cloud PostgreSQL!');
+        showToast('Đã làm mới toàn bộ dữ liệu về 0 ₫ (giữ nguyên danh mục & ví cơ bản)!');
       }
     } catch {
-      showToast('Đã khôi phục dữ liệu mẫu');
+      showToast('Đã làm mới dữ liệu về 0 ₫');
     }
   };
 
@@ -669,7 +748,7 @@ export default function App() {
                 <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
                 Đồng bộ ngay
               </button>
-              <span className="text-slate-400 font-mono-num">{transactions.length} bản ghi</span>
+              <span className="text-slate-400 font-mono-num">{transactions.length} giao dịch</span>
             </div>
           </div>
 
@@ -684,7 +763,6 @@ export default function App() {
         {/* TOP BAR */}
         <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-3.5">
           <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            {/* Mobile Brand + Active Section Title */}
             <div className="flex items-center gap-3">
               <div className="lg:hidden w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm">
                 <Wallet className="w-4 h-4" />
@@ -694,14 +772,12 @@ export default function App() {
                   {NAV_TABS.find((t) => t.id === activeTab)?.label}
                 </h1>
                 <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                  Kiểm soát dòng tiền thông minh, trực quan & đồng bộ đám mây thời gian thực
+                  Gợi ý sẵn các mục thiết yếu trong cuộc sống — Bạn chỉ cần điền số tiền hoặc tạo mới
                 </p>
               </div>
             </div>
 
-            {/* Right Controls: Month Selector, Privacy Mode, Theme, Export, Add CTA */}
             <div className="flex items-center gap-2 sm:gap-2.5">
-              {/* Period Selector */}
               <div className="relative">
                 <select
                   value={selectedMonth}
@@ -719,7 +795,6 @@ export default function App() {
                 </select>
               </div>
 
-              {/* Hide/Show Balance Toggle */}
               <button
                 type="button"
                 onClick={() => setHideBalance((prev) => !prev)}
@@ -729,7 +804,6 @@ export default function App() {
                 {hideBalance ? <EyeOff className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
               </button>
 
-              {/* Dark / Light Mode Toggle */}
               <button
                 type="button"
                 onClick={() => setDarkMode((prev) => !prev)}
@@ -739,7 +813,6 @@ export default function App() {
                 {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
               </button>
 
-              {/* Quick Add Button */}
               <button
                 type="button"
                 onClick={() => {
@@ -760,7 +833,7 @@ export default function App() {
           {/* ==================== TAB 1: DASHBOARD (TỔNG QUAN) ==================== */}
           {activeTab === 'dashboard' && (
             <>
-              {/* 1. Smart Natural Language Quick-Add Bar */}
+              {/* 1. Smart Natural Language Quick-Add Bar with Suggestion Chips */}
               <QuickAddBar
                 categories={categories}
                 wallets={wallets}
@@ -774,14 +847,13 @@ export default function App() {
 
               {/* 2. KPI Summary Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {/* Total Net Worth */}
                 <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/15 flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-emerald-100">
-                      Tổng Tài Sản Hiện Có
+                      Tổng Số Dư Các Ví
                     </span>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
-                      {wallets.length} Ví nguồn tiền
+                      {wallets.length} Ví sẵn có
                     </span>
                   </div>
                   <div className="my-3">
@@ -790,7 +862,7 @@ export default function App() {
                     </p>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-emerald-100">
-                    <span>Chênh lệch kỳ này:</span>
+                    <span>Chênh lệch thu chi:</span>
                     <span className="font-mono-num font-bold text-white">
                       {monthNetCashflow >= 0 ? '+' : ''}
                       {formatCompactVND(monthNetCashflow, hideBalance)}
@@ -798,7 +870,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Total Income */}
                 <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -821,7 +892,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Total Expense */}
                 <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -841,12 +911,11 @@ export default function App() {
                     <span className="font-mono-num font-bold text-slate-800 dark:text-slate-200">
                       {totalMonthlyBudget > 0
                         ? `${((monthExpense / totalMonthlyBudget) * 100).toFixed(1)}%`
-                        : '—'}
+                        : 'Chưa đặt hạn mức'}
                     </span>
                   </div>
                 </div>
 
-                {/* Safe to Spend Daily */}
                 <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
@@ -858,27 +927,33 @@ export default function App() {
                   </div>
                   <div className="my-3">
                     <p className="text-2xl font-extrabold font-mono-num text-blue-600 dark:text-blue-400">
-                      {formatVND(safeDailySpend, hideBalance)}
+                      {totalMonthlyBudget > 0 ? formatVND(safeDailySpend, hideBalance) : '—'}
                     </p>
                   </div>
                   <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                     <span>Ngân sách còn lại:</span>
-                    <span className="font-mono-num font-bold text-slate-700 dark:text-slate-200">
-                      {formatCompactVND(budgetRemaining, hideBalance)}
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('budgets')}
+                      className="font-mono-num font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                    >
+                      {totalMonthlyBudget > 0
+                        ? formatCompactVND(budgetRemaining, hideBalance)
+                        : 'Thiết lập ngay →'}
+                    </button>
                   </div>
                 </div>
               </div>
 
-              {/* 3. Wallets Bar (Quản lý Đa Ví & Chuyển Tiền) */}
+              {/* 3. Wallets Bar (Đã tạo sẵn 4 Ví thiết yếu ở mức 0 ₫ để user tự điền hoặc thêm mới) */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
                   <div>
                     <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                      Nguồn Tiền & Ví Cá Nhân
+                      Nguồn Tiền & Ví Cá Nhân (Đã tạo sẵn các ví thiết yếu)
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Nhấn vào ví để chỉnh sửa số dư hoặc chuyển tiền nội bộ giữa các ví
+                      Chạm vào từng ví để nhập số dư thực tế của bạn, hoặc nhấn &ldquo;+ Thêm ví&rdquo; để tạo ví mới
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -904,7 +979,7 @@ export default function App() {
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Thêm ví
+                      Thêm ví mới
                     </button>
                   </div>
                 </div>
@@ -927,8 +1002,8 @@ export default function App() {
                         >
                           <DynamicIcon name={w.icon} className="w-4 h-4" />
                         </div>
-                        <span className="text-[11px] font-mono-num text-slate-400">
-                          {w.account_number}
+                        <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 group-hover:underline">
+                          {w.balance === 0 ? 'Nhập số dư →' : w.account_number}
                         </span>
                       </div>
                       <div className="mt-3">
@@ -944,19 +1019,231 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 4. Charts Row: Cashflow Trend & Category Donut */}
+              {/* 4. Recent Transactions & Essential Life Suggestions */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                {/* Left: Recent Transactions or Quick Category Starters */}
                 <div className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-4">
                     <div>
                       <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                        Biểu Đồ Dòng Tiền Thu - Chi Theo Ngày
+                        {monthTransactions.length > 0
+                          ? 'Giao Dịch Vừa Ghi Nhận'
+                          : 'Danh Mục Thiết Yếu Đã Chuẩn Bị Sẵn Cho Bạn'}
                       </h3>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Theo dõi nhịp độ chi tiêu và dòng tiền vào/ra từng ngày
+                        {monthTransactions.length > 0
+                          ? 'Nhấn vào giao dịch bất kỳ để chỉnh sửa'
+                          : 'Chưa có giao dịch nào — Chạm vào một mục dưới đây để điền số tiền hoặc tự tạo mới'}
                       </p>
                     </div>
+                    {monthTransactions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('transactions')}
+                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        Xem toàn bộ ({monthTransactions.length}) →
+                      </button>
+                    )}
                   </div>
+
+                  {monthTransactions.length === 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {categories.slice(0, 12).map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => {
+                            setEditingTx({
+                              title: '',
+                              type: cat.type,
+                              category_id: cat.id,
+                              wallet_id: cat.type === 'income' ? 'w_bank' : 'w_cash'
+                            });
+                            setTxModalOpen(true);
+                          }}
+                          className="p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50/50 dark:bg-slate-800/40 flex items-center gap-2.5 text-left transition cursor-pointer group"
+                        >
+                          <div
+                            className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: `${cat.color}20`, color: cat.color }}
+                          >
+                            <DynamicIcon name={cat.icon} className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                              {cat.name}
+                            </p>
+                            <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                              + Điền số tiền
+                            </p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {monthTransactions.slice(0, 6).map((tx) => {
+                        const cat = categoryMap.get(tx.category_id) || {
+                          name: 'Khác',
+                          color: '#64748b',
+                          icon: 'Tag'
+                        };
+                        const wallet = walletMap.get(tx.wallet_id);
+                        return (
+                          <div
+                            key={tx.id}
+                            onClick={() => {
+                              setEditingTx(tx);
+                              setTxModalOpen(true);
+                            }}
+                            className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                                style={{ backgroundColor: `${cat.color}18`, color: cat.color }}
+                              >
+                                <DynamicIcon name={cat.icon} className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                                  {tx.title}
+                                </p>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                                  {cat.name} • {wallet?.name} • {formatDateVN(tx.tx_date)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 ml-3">
+                              <p
+                                className={`text-xs sm:text-sm font-extrabold font-mono-num ${
+                                  tx.type === 'income'
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-rose-600 dark:text-rose-400'
+                                }`}
+                              >
+                                {tx.type === 'income' ? '+' : '-'}
+                                {formatVND(tx.amount, hideBalance)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Recurring Bills or Life Bill Suggestions */}
+                <div className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                          Hóa Đơn Định Kỳ Hàng Tháng
+                        </h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {recurring.length > 0
+                            ? '1 chạm để thanh toán và tự động ghi vào sổ'
+                            : 'Gợi ý các hóa đơn thiết yếu — Chạm để điền số tiền của bạn'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('goals')}
+                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                      >
+                        Quản lý →
+                      </button>
+                    </div>
+
+                    {recurring.length === 0 ? (
+                      <div className="space-y-2">
+                        {RECURRING_SUGGESTIONS.slice(0, 5).map((sug, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setNewRecurringForm({
+                                title: sug.title,
+                                amount: '',
+                                category_id: sug.category_id,
+                                wallet_id: sug.wallet_id,
+                                due_day: String(sug.due_day),
+                                suggestedAmounts: sug.suggestedAmounts
+                              });
+                              setNewRecurringOpen(true);
+                              setActiveTab('goals');
+                            }}
+                            className="w-full p-3 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 bg-slate-50/40 dark:bg-slate-800/30 flex items-center justify-between text-left transition cursor-pointer"
+                          >
+                            <div>
+                              <p className="text-xs font-bold text-slate-800 dark:text-slate-100">
+                                {sug.title}
+                              </p>
+                              <p className="text-[11px] text-slate-400">
+                                Gợi ý ngày {String(sug.due_day).padStart(2, '0')} hàng tháng
+                              </p>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold">
+                              + Thiết lập
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2.5">
+                        {recurring.map((bill) => {
+                          const isPaidThisMonth = bill.last_paid_month === '2026-11';
+                          return (
+                            <div
+                              key={bill.id}
+                              className="p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between gap-2"
+                            >
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate block">
+                                  {bill.title}
+                                </span>
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                  Ngày {String(bill.due_day).padStart(2, '0')} •{' '}
+                                  <strong className="font-mono-num text-slate-700 dark:text-slate-200">
+                                    {formatVND(bill.amount, hideBalance)}
+                                  </strong>
+                                </p>
+                              </div>
+
+                              {isPaidThisMonth ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Đã trả
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePayRecurring(bill.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-[11px] font-bold shadow-sm transition cursor-pointer shrink-0"
+                                >
+                                  Thanh toán
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Charts Row: Cashflow Trend & Category Donut */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <div className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
+                  <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                    Biểu Đồ Dòng Tiền Thu - Chi Theo Ngày
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Tự động vẽ biểu đồ ngay khi bạn ghi nhận các khoản thu/chi
+                  </p>
                   <CashflowBarChart
                     transactions={transactions}
                     selectedMonth={selectedMonth}
@@ -971,7 +1258,7 @@ export default function App() {
                       Cơ Cấu Chi Tiêu Theo Danh Mục
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Nhấn vào danh mục để xem các giao dịch thuộc nhóm đó
+                      Tỷ trọng từng nhóm chi tiêu của bạn trong tháng
                     </p>
                   </div>
                   <CategoryDonutChart
@@ -987,7 +1274,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* 5. 50/30/20 Financial Rule Analyzer */}
+              {/* 6. 50/30/20 Financial Rule Analyzer */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
                 <div className="mb-4">
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
@@ -1004,179 +1291,14 @@ export default function App() {
                   hideBalance={hideBalance}
                 />
               </div>
-
-              {/* 6. Recent Transactions & Upcoming Bills */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                {/* Recent Transactions */}
-                <div className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                        Giao Dịch Mới Nhất
-                      </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        Các phát sinh thu chi vừa được ghi nhận
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('transactions')}
-                      className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                    >
-                      Xem toàn bộ sổ ({monthTransactions.length}) →
-                    </button>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {monthTransactions.slice(0, 6).map((tx) => {
-                      const cat = categoryMap.get(tx.category_id) || {
-                        name: 'Khác',
-                        color: '#64748b',
-                        icon: 'Tag'
-                      };
-                      const wallet = walletMap.get(tx.wallet_id);
-                      return (
-                        <div
-                          key={tx.id}
-                          onClick={() => {
-                            setEditingTx(tx);
-                            setTxModalOpen(true);
-                          }}
-                          className="flex items-center justify-between p-3 rounded-2xl border border-slate-100 dark:border-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                              style={{ backgroundColor: `${cat.color}18`, color: cat.color }}
-                            >
-                              <DynamicIcon name={cat.icon} className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                {tx.title}
-                              </p>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                                {cat.name} • {wallet?.name} • {formatDateVN(tx.tx_date)}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0 ml-3">
-                            <p
-                              className={`text-xs sm:text-sm font-extrabold font-mono-num ${
-                                tx.type === 'income'
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-rose-600 dark:text-rose-400'
-                              }`}
-                            >
-                              {tx.type === 'income' ? '+' : '-'}
-                              {formatVND(tx.amount, hideBalance)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Recurring Bills & Goals Preview */}
-                <div className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                          Lịch Hóa Đơn Định Kỳ Hàng Tháng
-                        </h3>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          1 chạm để thanh toán và tự động ghi vào sổ
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('goals')}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                      >
-                        Quản lý →
-                      </button>
-                    </div>
-
-                    <div className="space-y-2.5">
-                      {recurring.map((bill) => {
-                        const isPaidThisMonth = bill.last_paid_month === '2026-11';
-                        return (
-                          <div
-                            key={bill.id}
-                            className="p-3 rounded-2xl border border-slate-200/70 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between gap-2"
-                          >
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                                  {bill.title}
-                                </span>
-                              </div>
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                                Ngày {String(bill.due_day).padStart(2, '0')} hàng tháng •{' '}
-                                <strong className="font-mono-num text-slate-700 dark:text-slate-200">
-                                  {formatVND(bill.amount, hideBalance)}
-                                </strong>
-                              </p>
-                            </div>
-
-                            {isPaidThisMonth ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                Đã trả T11
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => handlePayRecurring(bill.id)}
-                                className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white text-[11px] font-bold shadow-sm transition cursor-pointer shrink-0"
-                              >
-                                Thanh toán ngay
-                              </button>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Mini Savings Goal Progress */}
-                  {goals[0] && (
-                    <div className="mt-4 pt-4 border-t border-slate-200/70 dark:border-slate-800">
-                      <div className="flex items-center justify-between text-xs mb-1.5">
-                        <span className="font-bold text-slate-700 dark:text-slate-200">
-                          🐖 {goals[0].name}
-                        </span>
-                        <span className="font-mono-num font-bold text-emerald-600 dark:text-emerald-400">
-                          {Math.round((goals[0].current_amount / goals[0].target_amount) * 100)}%
-                        </span>
-                      </div>
-                      <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 rounded-full"
-                          style={{
-                            width: `${Math.min(
-                              100,
-                              (goals[0].current_amount / goals[0].target_amount) * 100
-                            )}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
             </>
           )}
 
           {/* ==================== TAB 2: SỔ GIAO DỊCH (TRANSACTIONS LEDGER) ==================== */}
           {activeTab === 'transactions' && (
             <div className="space-y-5">
-              {/* Filter & View Switcher Toolbar */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  {/* View Switcher: List vs Calendar Heatmap */}
                   <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800">
                     <button
                       type="button"
@@ -1204,16 +1326,17 @@ export default function App() {
                     </button>
                   </div>
 
-                  {/* Export CSV & Add Transaction */}
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleExportCSV}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
-                    >
-                      <Download className="w-3.5 h-3.5 text-emerald-600" />
-                      Xuất Excel CSV
-                    </button>
+                    {filteredLedgerTransactions.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleExportCSV}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-600" />
+                        Xuất Excel CSV
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => {
@@ -1228,7 +1351,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Search & Multi-Filter Row */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
                   <div className="relative lg:col-span-2">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -1279,7 +1401,6 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Optional Calendar Heatmap View */}
               {ledgerViewMode === 'calendar' && (
                 <CalendarLedgerView
                   month={selectedMonth}
@@ -1290,27 +1411,24 @@ export default function App() {
                 />
               )}
 
-              {/* Grouped Transactions List */}
               {groupedTransactions.length === 0 ? (
-                <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-12 text-center">
+                <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-10 text-center">
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
-                    Không tìm thấy giao dịch nào khớp bộ lọc
+                    Sổ giao dịch đang trống
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
-                    Hãy thử xóa bộ lọc hoặc nhấn nút Thêm giao dịch mới
+                    Hãy nhấn nút bên dưới để tự ghi khoản thu/chi đầu tiên của bạn
                   </p>
                   <button
                     type="button"
                     onClick={() => {
-                      setSearchQuery('');
-                      setFilterType('all');
-                      setFilterCategory('all');
-                      setFilterWallet('all');
-                      setSelectedDay(null);
+                      setEditingTx(null);
+                      setTxModalOpen(true);
                     }}
-                    className="mt-4 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                    className="mt-4 inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
                   >
-                    Đặt lại bộ lọc
+                    <Plus className="w-4 h-4" />
+                    Thêm giao dịch đầu tiên
                   </button>
                 </div>
               ) : (
@@ -1320,7 +1438,6 @@ export default function App() {
                       key={group.date}
                       className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 overflow-hidden shadow-sm"
                     >
-                      {/* Day Header */}
                       <div className="px-5 py-3 bg-slate-50/90 dark:bg-slate-800/60 border-b border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
                         <span className="text-xs font-extrabold text-slate-800 dark:text-slate-100">
                           {formatDateVN(group.date)}
@@ -1339,7 +1456,6 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* Day Transactions */}
                       <div className="divide-y divide-slate-100 dark:divide-slate-800/70">
                         {group.items.map((tx) => {
                           const cat = categoryMap.get(tx.category_id) || {
@@ -1444,35 +1560,37 @@ export default function App() {
             </div>
           )}
 
-          {/* ==================== TAB 3: NGÂN SÁCH (BUDGET PLANNER) ==================== */}
+          {/* ==================== TAB 3: NGÂN SÁCH (BUDGET PLANNER WITH SUGGESTIONS) ==================== */}
           {activeTab === 'budgets' && (
             <div className="space-y-6">
-              {/* Overall Monthly Budget Hero */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-                      Kiểm soát hạn mức chi tiêu tháng
+                      Định mức chi tiêu hàng tháng
                     </span>
                     <h2 className="text-lg font-extrabold text-slate-900 dark:text-white mt-0.5">
-                      Tổng Ngân Sách Định Mức: {formatVND(totalMonthlyBudget, hideBalance)}
+                      Tổng Ngân Sách Bạn Đã Đặt: {formatVND(totalMonthlyBudget, hideBalance)}
                     </h2>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-slate-500">Hạn mức an toàn mỗi ngày còn lại:</p>
-                    <p className="text-base font-extrabold font-mono-num text-emerald-600 dark:text-emerald-400">
-                      {formatVND(safeDailySpend, hideBalance)} / ngày
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Chọn nhanh mức gợi ý ở từng danh mục bên dưới hoặc tự điền con số phù hợp với bạn
                     </p>
                   </div>
+                  {totalMonthlyBudget > 0 && (
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500">Hạn mức an toàn mỗi ngày còn lại:</p>
+                      <p className="text-base font-extrabold font-mono-num text-emerald-600 dark:text-emerald-400">
+                        {formatVND(safeDailySpend, hideBalance)} / ngày
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-                <div className="w-full h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-3">
+                <div className="w-full h-3 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      monthExpense > totalMonthlyBudget
+                      totalMonthlyBudget > 0 && monthExpense > totalMonthlyBudget
                         ? 'bg-rose-600'
-                        : monthExpense > totalMonthlyBudget * 0.8
-                        ? 'bg-amber-500'
                         : 'bg-emerald-500'
                     }`}
                     style={{
@@ -1483,52 +1601,22 @@ export default function App() {
                     }}
                   />
                 </div>
-
-                <div className="flex flex-wrap items-center justify-between text-xs text-slate-600 dark:text-slate-300">
-                  <span>
-                    Đã chi tiêu:{' '}
-                    <strong className="font-mono-num text-rose-600 dark:text-rose-400">
-                      {formatVND(monthExpense, hideBalance)}
-                    </strong>
-                  </span>
-                  <span>
-                    Còn được phép chi:{' '}
-                    <strong className="font-mono-num text-emerald-600 dark:text-emerald-400">
-                      {formatVND(budgetRemaining, hideBalance)}
-                    </strong>
-                  </span>
-                </div>
               </div>
 
-              {/* Per-Category Budget Cards */}
+              {/* Per-Category Budget Cards with Quick Suggestions */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {categories
                   .filter((c) => c.type === 'expense')
                   .map((cat) => {
                     const budgetObj = budgets.find((b) => b.category_id === cat.id);
-                    const limit = Number(budgetObj?.monthly_limit || 1500000);
+                    const limit = Number(budgetObj?.monthly_limit || 0);
                     const spent = monthTransactions
                       .filter((t) => t.type === 'expense' && t.category_id === cat.id)
                       .reduce((s, t) => s + (Number(t.amount) || 0), 0);
                     const pct = limit > 0 ? (spent / limit) * 100 : 0;
                     const remaining = limit - spent;
                     const isEditingThis = editingBudgetCatId === cat.id;
-
-                    let statusBadge = {
-                      label: 'Trong tầm kiểm soát',
-                      cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                    };
-                    if (pct >= 100) {
-                      statusBadge = {
-                        label: 'Vượt ngân sách!',
-                        cls: 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                      };
-                    } else if (pct >= 75) {
-                      statusBadge = {
-                        label: 'Sắp chạm trần',
-                        cls: 'bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                      };
-                    }
+                    const suggestions = BUDGET_SUGGESTIONS[cat.id] || [1000000, 2000000, 3000000];
 
                     return (
                       <div
@@ -1548,10 +1636,8 @@ export default function App() {
                                 <h4 className="text-xs font-extrabold text-slate-900 dark:text-white">
                                   {cat.name}
                                 </h4>
-                                <span
-                                  className={`inline-block mt-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${statusBadge.cls}`}
-                                >
-                                  {statusBadge.label}
+                                <span className="text-[11px] text-slate-400">
+                                  Đã chi: {formatVND(spent, hideBalance)}
                                 </span>
                               </div>
                             </div>
@@ -1560,11 +1646,11 @@ export default function App() {
                               type="button"
                               onClick={() => {
                                 setEditingBudgetCatId(cat.id);
-                                setBudgetInputVal(String(limit));
+                                setBudgetInputVal(limit > 0 ? String(limit) : '');
                               }}
                               className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
                             >
-                              Đặt hạn mức
+                              {limit > 0 ? 'Sửa hạn mức' : 'Tự nhập'}
                             </button>
                           </div>
 
@@ -1574,7 +1660,8 @@ export default function App() {
                                 type="text"
                                 value={budgetInputVal}
                                 onChange={(e) => setBudgetInputVal(e.target.value)}
-                                placeholder="VD: 3tr, 1500000"
+                                placeholder="Nhập số tiền (VD: 2tr, 1500k)"
+                                autoFocus
                                 className="flex-1 px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-emerald-400 text-xs font-mono-num font-bold"
                               />
                               <button
@@ -1585,49 +1672,60 @@ export default function App() {
                                 Lưu
                               </button>
                             </div>
-                          ) : (
-                            <div className="my-3 flex items-baseline justify-between">
-                              <div>
-                                <p className="text-[11px] text-slate-400">Đã chi</p>
-                                <p className="text-sm font-extrabold font-mono-num text-slate-900 dark:text-white">
-                                  {formatVND(spent, hideBalance)}
-                                </p>
+                          ) : limit === 0 ? (
+                            <div className="my-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mb-2">
+                                Gợi ý hạn mức tháng (chạm để áp dụng):
+                              </p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {suggestions.map((val) => (
+                                  <button
+                                    key={val}
+                                    type="button"
+                                    onClick={() => handleSaveBudget(cat.id, val)}
+                                    className="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-emerald-500 text-xs font-mono-num font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                                  >
+                                    {formatCompactVND(val)}
+                                  </button>
+                                ))}
                               </div>
-                              <div className="text-right">
-                                <p className="text-[11px] text-slate-400">Định mức tháng</p>
-                                <p className="text-sm font-bold font-mono-num text-slate-600 dark:text-slate-300">
+                            </div>
+                          ) : (
+                            <div className="my-3">
+                              <div className="flex items-baseline justify-between mb-1.5">
+                                <span className="text-xs text-slate-400">Hạn mức đã đặt:</span>
+                                <span className="text-sm font-extrabold font-mono-num text-slate-900 dark:text-white">
                                   {formatVND(limit, hideBalance)}
-                                </p>
+                                </span>
+                              </div>
+                              <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{
+                                    width: `${Math.min(100, pct)}%`,
+                                    backgroundColor:
+                                      pct >= 100 ? '#ef4444' : pct >= 75 ? '#f59e0b' : cat.color
+                                  }}
+                                />
+                              </div>
+                              <div className="flex items-center justify-between text-[11px]">
+                                <span className="font-mono-num text-slate-500">
+                                  Đã dùng {pct.toFixed(1)}%
+                                </span>
+                                <span
+                                  className={`font-mono-num font-bold ${
+                                    remaining >= 0
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-rose-600 dark:text-rose-400'
+                                  }`}
+                                >
+                                  {remaining >= 0
+                                    ? `Còn ${formatCompactVND(remaining, hideBalance)}`
+                                    : `Vượt ${formatCompactVND(Math.abs(remaining), hideBalance)}`}
+                                </span>
                               </div>
                             </div>
                           )}
-                        </div>
-
-                        <div>
-                          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-2">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, pct)}%`,
-                                backgroundColor:
-                                  pct >= 100 ? '#ef4444' : pct >= 75 ? '#f59e0b' : cat.color
-                              }}
-                            />
-                          </div>
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-mono-num text-slate-500">{pct.toFixed(1)}%</span>
-                            <span
-                              className={`font-mono-num font-bold ${
-                                remaining >= 0
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-rose-600 dark:text-rose-400'
-                              }`}
-                            >
-                              {remaining >= 0
-                                ? `Còn dư ${formatCompactVND(remaining, hideBalance)}`
-                                : `Vượt ${formatCompactVND(Math.abs(remaining), hideBalance)}`}
-                            </span>
-                          </div>
                         </div>
                       </div>
                     );
@@ -1636,290 +1734,475 @@ export default function App() {
             </div>
           )}
 
-          {/* ==================== TAB 4: TÍCH LŨY & ĐỊNH KỲ (GOALS & RECURRING) ==================== */}
+          {/* ==================== TAB 4: TÍCH LŨY & ĐỊNH KỲ (GOALS & RECURRING WITH SUGGESTIONS) ==================== */}
           {activeTab === 'goals' && (
             <div className="space-y-6">
               {/* Section A: Savings Jars / Financial Goals */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
                     <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
                       🐖 Hũ Tiết Kiệm & Mục Tiêu Tài Chính
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Chia nhỏ mục tiêu lớn thành từng bước tích lũy kỷ luật hàng tháng
+                      Chọn một mục tiêu thiết yếu gợi ý bên dưới để điền số tiền đích, hoặc tự tạo mục tiêu riêng
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setNewGoalOpen((prev) => !prev)}
+                    onClick={() => {
+                      setNewGoalForm({
+                        name: '',
+                        target_amount: '',
+                        current_amount: '0',
+                        deadline: '2027-06-30',
+                        icon: 'Target',
+                        color: '#10b981',
+                        note: '',
+                        suggestedTargets: ['10000000', '30000000', '50000000']
+                      });
+                      setNewGoalOpen((prev) => !prev);
+                    }}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    Tạo hũ mục tiêu mới
+                    Tự tạo mục tiêu riêng
                   </button>
                 </div>
 
+                {/* Goal Suggestion Chips */}
+                <div className="mb-5">
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">
+                    💡 Gợi ý các quỹ tiết kiệm cần thiết cho cuộc sống (chạm để chọn & điền số tiền):
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {GOAL_SUGGESTIONS.map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setNewGoalForm({
+                            name: sug.name,
+                            target_amount: '',
+                            current_amount: '0',
+                            deadline: '2027-06-30',
+                            icon: sug.icon,
+                            color: sug.color,
+                            note: sug.note,
+                            suggestedTargets: sug.suggestedTargets
+                          });
+                          setNewGoalOpen(true);
+                        }}
+                        className="p-3 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between gap-2 text-left transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div
+                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ backgroundColor: `${sug.color}20`, color: sug.color }}
+                          >
+                            <DynamicIcon name={sug.icon} className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {sug.name}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
+                          Chọn →
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Goal Creation Form */}
                 {newGoalOpen && (
                   <form
                     onSubmit={handleCreateGoal}
-                    className="mb-5 p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 grid grid-cols-1 sm:grid-cols-4 gap-3"
+                    className="mb-6 p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/70 space-y-3"
                   >
-                    <input
-                      type="text"
-                      required
-                      placeholder="Tên mục tiêu (VD: Mua iPhone 17, Quỹ cưới...)"
-                      value={newGoalForm.name}
-                      onChange={(e) => setNewGoalForm({ ...newGoalForm, name: e.target.value })}
-                      className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
-                    />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Số tiền đích (VD: 30tr)"
-                      value={newGoalForm.target_amount}
-                      onChange={(e) =>
-                        setNewGoalForm({ ...newGoalForm, target_amount: e.target.value })
-                      }
-                      className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num"
-                    />
-                    <input
-                      type="date"
-                      value={newGoalForm.deadline}
-                      onChange={(e) => setNewGoalForm({ ...newGoalForm, deadline: e.target.value })}
-                      className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
-                    >
-                      Lưu mục tiêu
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Tên mục tiêu tiết kiệm..."
+                        value={newGoalForm.name}
+                        onChange={(e) => setNewGoalForm({ ...newGoalForm, name: e.target.value })}
+                        className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+                      />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nhập số tiền mục tiêu (VD: 30tr, 50tr)"
+                        value={newGoalForm.target_amount}
+                        onChange={(e) =>
+                          setNewGoalForm({ ...newGoalForm, target_amount: e.target.value })
+                        }
+                        autoFocus
+                        className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-400 text-xs font-mono-num font-bold"
+                      />
+                      <input
+                        type="date"
+                        value={newGoalForm.deadline}
+                        onChange={(e) =>
+                          setNewGoalForm({ ...newGoalForm, deadline: e.target.value })
+                        }
+                        className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] text-slate-500">Gợi ý mức đích:</span>
+                        {(newGoalForm.suggestedTargets || ['10000000', '30000000', '50000000']).map(
+                          (tVal) => (
+                            <button
+                              key={tVal}
+                              type="button"
+                              onClick={() =>
+                                setNewGoalForm({ ...newGoalForm, target_amount: tVal })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num font-bold text-emerald-600 cursor-pointer"
+                            >
+                              {formatCompactVND(Number(tVal))}
+                            </button>
+                          )
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNewGoalOpen(false)}
+                          className="px-3 py-2 rounded-xl text-xs font-bold text-slate-500 cursor-pointer"
+                        >
+                          Đóng
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                        >
+                          Lưu hũ mục tiêu
+                        </button>
+                      </div>
+                    </div>
                   </form>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {goals.map((g) => {
-                    const pct = Math.min(
-                      100,
-                      g.target_amount > 0 ? (g.current_amount / g.target_amount) * 100 : 0
-                    );
-                    const remaining = Math.max(0, g.target_amount - g.current_amount);
+                {goals.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {goals.map((g) => {
+                      const pct = Math.min(
+                        100,
+                        g.target_amount > 0 ? (g.current_amount / g.target_amount) * 100 : 0
+                      );
+                      const remaining = Math.max(0, g.target_amount - g.current_amount);
 
-                    return (
-                      <div
-                        key={g.id}
-                        className="p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex flex-col justify-between"
-                      >
-                        <div>
-                          <div className="flex items-center justify-between gap-2 mb-3">
-                            <div
-                              className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                              style={{ backgroundColor: `${g.color}20`, color: g.color }}
-                            >
-                              <DynamicIcon name={g.icon} className="w-5 h-5" />
-                            </div>
-                            <span className="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                              {pct.toFixed(1)}%
-                            </span>
-                          </div>
-
-                          <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                            {g.name}
-                          </h4>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                            {g.note || `Hạn hoàn thành: ${formatDateVN(g.deadline)}`}
-                          </p>
-
-                          <div className="my-4">
-                            <div className="flex items-baseline justify-between text-xs mb-1.5">
-                              <span className="font-extrabold font-mono-num text-emerald-600 dark:text-emerald-400">
-                                {formatVND(g.current_amount, hideBalance)}
-                              </span>
-                              <span className="font-mono-num text-slate-400">
-                                / {formatVND(g.target_amount, hideBalance)}
-                              </span>
-                            </div>
-                            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                      return (
+                        <div
+                          key={g.id}
+                          className="p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-3">
                               <div
-                                className="h-full rounded-full transition-all duration-500"
-                                style={{ width: `${pct}%`, backgroundColor: g.color }}
-                              />
+                                className="w-10 h-10 rounded-2xl flex items-center justify-center"
+                                style={{ backgroundColor: `${g.color}20`, color: g.color }}
+                              >
+                                <DynamicIcon name={g.icon} className="w-5 h-5" />
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-mono-num font-extrabold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                                  {pct.toFixed(1)}%
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteGoal(g.id)}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-1.5">
-                              Còn thiếu:{' '}
-                              <strong className="font-mono-num">
-                                {formatVND(remaining, hideBalance)}
-                              </strong>
-                            </p>
-                          </div>
-                        </div>
 
-                        {contributeGoalId === g.id ? (
-                          <div className="space-y-2 pt-2 border-t border-slate-200/70 dark:border-slate-700">
-                            <input
-                              type="text"
-                              value={contributeAmount}
-                              onChange={(e) => setContributeAmount(e.target.value)}
-                              placeholder="Nhập số tiền nạp (VD: 1tr, 500k)"
-                              className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num font-bold"
-                            />
-                            <div className="flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleContributeGoal(g.id)}
-                                className="flex-1 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
-                              >
-                                Xác nhận nạp
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setContributeGoalId(null)}
-                                className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-xs font-bold cursor-pointer"
-                              >
-                                Hủy
-                              </button>
+                            <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                              {g.name}
+                            </h4>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                              {g.note || `Hạn hoàn thành: ${formatDateVN(g.deadline)}`}
+                            </p>
+
+                            <div className="my-4">
+                              <div className="flex items-baseline justify-between text-xs mb-1.5">
+                                <span className="font-extrabold font-mono-num text-emerald-600 dark:text-emerald-400">
+                                  {formatVND(g.current_amount, hideBalance)}
+                                </span>
+                                <span className="font-mono-num text-slate-400">
+                                  / {formatVND(g.target_amount, hideBalance)}
+                                </span>
+                              </div>
+                              <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all duration-500"
+                                  style={{ width: `${pct}%`, backgroundColor: g.color }}
+                                />
+                              </div>
+                              <p className="text-[11px] text-slate-500 mt-1.5">
+                                Còn thiếu:{' '}
+                                <strong className="font-mono-num">
+                                  {formatVND(remaining, hideBalance)}
+                                </strong>
+                              </p>
                             </div>
                           </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setContributeGoalId(g.id);
-                              setContributeAmount('1000000');
-                            }}
-                            className="w-full py-2.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600 hover:text-white text-emerald-700 dark:text-emerald-300 text-xs font-bold transition cursor-pointer"
-                          >
-                            + Nạp thêm tiền vào hũ
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+
+                          {contributeGoalId === g.id ? (
+                            <div className="space-y-2 pt-2 border-t border-slate-200/70 dark:border-slate-700">
+                              <input
+                                type="text"
+                                value={contributeAmount}
+                                onChange={(e) => setContributeAmount(e.target.value)}
+                                placeholder="Nhập số tiền nạp (VD: 500k, 2tr)"
+                                autoFocus
+                                className="w-full px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num font-bold"
+                              />
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleContributeGoal(g.id)}
+                                  className="flex-1 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                                >
+                                  Xác nhận nạp
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setContributeGoalId(null)}
+                                  className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-700 text-xs font-bold cursor-pointer"
+                                >
+                                  Hủy
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setContributeGoalId(g.id);
+                                setContributeAmount('');
+                              }}
+                              className="w-full py-2.5 rounded-xl bg-emerald-600/10 hover:bg-emerald-600 hover:text-white text-emerald-700 dark:text-emerald-300 text-xs font-bold transition cursor-pointer"
+                            >
+                              + Nạp thêm tiền vào hũ
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
-              {/* Section B: Recurring Monthly Bills */}
+              {/* Section B: Recurring Monthly Bills with Suggestions */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
                     <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
-                      📅 Hóa Đơn & Chi Phí Cố Định Hàng Tháng
+                      📅 Hóa Đơn & Chi Phí Định Kỳ Hàng Tháng
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Không bao giờ quên tiền nhà, điện nước, internet hay gói đăng ký dịch vụ
+                      Chọn hóa đơn thiết yếu bên dưới rồi điền số tiền hàng tháng của bạn, hoặc tự tạo mới
                     </p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setNewRecurringOpen((prev) => !prev)}
+                    onClick={() => {
+                      setNewRecurringForm({
+                        title: '',
+                        amount: '',
+                        category_id: 'cat_housing',
+                        wallet_id: 'w_bank',
+                        due_day: '5',
+                        suggestedAmounts: ['200000', '500000', '1500000']
+                      });
+                      setNewRecurringOpen((prev) => !prev);
+                    }}
                     className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
-                    Thêm hóa đơn định kỳ
+                    Tự thêm khoản định kỳ
                   </button>
+                </div>
+
+                {/* Recurring Bill Suggestion Chips */}
+                <div className="mb-5">
+                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">
+                    💡 Gợi ý các hóa đơn sinh hoạt thiết yếu (chạm để điền số tiền của bạn):
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {RECURRING_SUGGESTIONS.map((sug, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setNewRecurringForm({
+                            title: sug.title,
+                            amount: '',
+                            category_id: sug.category_id,
+                            wallet_id: sug.wallet_id,
+                            due_day: String(sug.due_day),
+                            suggestedAmounts: sug.suggestedAmounts
+                          });
+                          setNewRecurringOpen(true);
+                        }}
+                        className="px-3 py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 bg-slate-50/60 dark:bg-slate-800/50 text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                      >
+                        + {sug.title}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {newRecurringOpen && (
                   <form
                     onSubmit={handleCreateRecurring}
-                    className="mb-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-4 gap-3"
+                    className="mb-5 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-emerald-300 dark:border-emerald-800 space-y-3"
                   >
-                    <input
-                      type="text"
-                      required
-                      placeholder="Tên hóa đơn (VD: Internet Viettel, Netflix...)"
-                      value={newRecurringForm.title}
-                      onChange={(e) =>
-                        setNewRecurringForm({ ...newRecurringForm, title: e.target.value })
-                      }
-                      className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs"
-                    />
-                    <input
-                      type="text"
-                      required
-                      placeholder="Số tiền (VD: 260k)"
-                      value={newRecurringForm.amount}
-                      onChange={(e) =>
-                        setNewRecurringForm({ ...newRecurringForm, amount: e.target.value })
-                      }
-                      className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num"
-                    />
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      placeholder="Ngày thanh toán (1-31)"
-                      value={newRecurringForm.due_day}
-                      onChange={(e) =>
-                        setNewRecurringForm({ ...newRecurringForm, due_day: e.target.value })
-                      }
-                      className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
-                    >
-                      Lưu khoản định kỳ
-                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <input
+                        type="text"
+                        required
+                        placeholder="Tên hóa đơn (VD: Tiền nhà, Điện, Nước...)"
+                        value={newRecurringForm.title}
+                        onChange={(e) =>
+                          setNewRecurringForm({ ...newRecurringForm, title: e.target.value })
+                        }
+                        className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold"
+                      />
+                      <input
+                        type="text"
+                        required
+                        placeholder="Nhập số tiền (VD: 350k, 4.5tr)"
+                        value={newRecurringForm.amount}
+                        onChange={(e) =>
+                          setNewRecurringForm({ ...newRecurringForm, amount: e.target.value })
+                        }
+                        autoFocus
+                        className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-400 text-xs font-mono-num font-bold"
+                      />
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        placeholder="Ngày thanh toán hàng tháng (1-31)"
+                        value={newRecurringForm.due_day}
+                        onChange={(e) =>
+                          setNewRecurringForm({ ...newRecurringForm, due_day: e.target.value })
+                        }
+                        className="px-3.5 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[11px] text-slate-500">Gợi ý mức tiền:</span>
+                        {(newRecurringForm.suggestedAmounts || ['200000', '500000', '1500000']).map(
+                          (aVal) => (
+                            <button
+                              key={aVal}
+                              type="button"
+                              onClick={() =>
+                                setNewRecurringForm({ ...newRecurringForm, amount: aVal })
+                              }
+                              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono-num font-bold text-emerald-600 cursor-pointer"
+                            >
+                              {formatCompactVND(Number(aVal))}
+                            </button>
+                          )
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNewRecurringOpen(false)}
+                          className="px-3 py-2 rounded-xl text-xs font-bold text-slate-500 cursor-pointer"
+                        >
+                          Đóng
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                        >
+                          Lưu khoản định kỳ
+                        </button>
+                      </div>
+                    </div>
                   </form>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  {recurring.map((bill) => {
-                    const isPaid = bill.last_paid_month === '2026-11';
-                    const cat = categoryMap.get(bill.category_id);
-                    const wallet = walletMap.get(bill.wallet_id);
+                {recurring.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                    {recurring.map((bill) => {
+                      const isPaid = bill.last_paid_month === '2026-11';
+                      const cat = categoryMap.get(bill.category_id);
+                      const wallet = walletMap.get(bill.wallet_id);
 
-                    return (
-                      <div
-                        key={bill.id}
-                        className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3"
-                      >
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div
-                            className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
-                            style={{
-                              backgroundColor: `${cat?.color || '#6366f1'}18`,
-                              color: cat?.color || '#6366f1'
-                            }}
-                          >
-                            <DynamicIcon name={cat?.icon || 'Home'} className="w-5 h-5" />
+                      return (
+                        <div
+                          key={bill.id}
+                          className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0"
+                              style={{
+                                backgroundColor: `${cat?.color || '#6366f1'}18`,
+                                color: cat?.color || '#6366f1'
+                              }}
+                            >
+                              <DynamicIcon name={cat?.icon || 'Home'} className="w-5 h-5" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
+                                {bill.title}
+                              </p>
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                Ngày {String(bill.due_day).padStart(2, '0')} hàng tháng • Ví:{' '}
+                                {wallet?.name}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white truncate">
-                              {bill.title}
-                            </p>
-                            <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                              Ngày {String(bill.due_day).padStart(2, '0')} hàng tháng • Ví:{' '}
-                              {wallet?.name}
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="text-right shrink-0">
-                          <p className="text-sm font-extrabold font-mono-num text-slate-900 dark:text-white mb-1">
-                            {formatVND(bill.amount, hideBalance)}
-                          </p>
-                          {isPaid ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Đã thanh toán T11
-                            </span>
-                          ) : (
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <p className="text-sm font-extrabold font-mono-num text-slate-900 dark:text-white mb-1">
+                                {formatVND(bill.amount, hideBalance)}
+                              </p>
+                              {isPaid ? (
+                                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  Đã thanh toán
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => handlePayRecurring(bill.id)}
+                                  className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold cursor-pointer"
+                                >
+                                  Ghi nhận đã trả
+                                </button>
+                              )}
+                            </div>
                             <button
                               type="button"
-                              onClick={() => handlePayRecurring(bill.id)}
-                              className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold cursor-pointer"
+                              onClick={() => handleDeleteRecurring(bill.id)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 cursor-pointer"
                             >
-                              Ghi nhận đã trả
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -1927,7 +2210,6 @@ export default function App() {
           {/* ==================== TAB 5: PHÂN TÍCH & CLOUD DB (ANALYTICS & DB) ==================== */}
           {activeTab === 'analytics' && (
             <div className="space-y-6">
-              {/* Deep Financial Insights Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
                   <span className="text-xs font-bold text-slate-400">
@@ -1964,14 +2246,14 @@ export default function App() {
                         <p className="text-xs text-slate-500 mt-1 truncate">{biggest.title}</p>
                       </>
                     ) : (
-                      <p className="text-sm text-slate-400 mt-2">Chưa có dữ liệu</p>
+                      <p className="text-sm text-slate-400 mt-2">Chưa có giao dịch chi tiêu</p>
                     );
                   })()}
                 </div>
 
                 <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
                   <span className="text-xs font-bold text-slate-400">
-                    Tổng tiến độ các Hũ Tiết Kiệm
+                    Tổng tích lũy trong các Hũ Mục Tiêu
                   </span>
                   <p className="text-xl font-extrabold font-mono-num text-emerald-600 dark:text-emerald-400 mt-2">
                     {formatVND(
@@ -1980,16 +2262,11 @@ export default function App() {
                     )}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Trên tổng mục tiêu{' '}
-                    {formatCompactVND(
-                      goals.reduce((s, g) => s + (Number(g.target_amount) || 0), 0),
-                      hideBalance
-                    )}
+                    {goals.length} hũ mục tiêu đang theo dõi
                   </p>
                 </div>
               </div>
 
-              {/* Cloud Database Architecture & Status Panel */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
@@ -2023,43 +2300,12 @@ export default function App() {
                     </button>
                     <button
                       type="button"
-                      onClick={handleResetDemo}
+                      onClick={handleResetClean}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 text-xs font-bold text-rose-600 dark:text-rose-300 cursor-pointer"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      Khôi phục dữ liệu mẫu
+                      Đặt lại toàn bộ về 0 ₫
                     </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60">
-                    <p className="font-extrabold text-emerald-900 dark:text-emerald-300 mb-1">
-                      1. Prisma Postgres / Neon Serverless (Đang dùng)
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                      PostgreSQL đám mây miễn phí đặt tại Singapore (<code>ap-southeast-1</code>),
-                      độ trễ thấp về Việt Nam, tương thích hoàn hảo với Vercel Serverless Functions.
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
-                    <p className="font-extrabold text-slate-900 dark:text-white mb-1">
-                      2. Bảng dữ liệu quan hệ tự động khởi tạo
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Gồm 6 bảng chuẩn hóa: <code>ff_wallets</code>, <code>ff_categories</code>,{' '}
-                      <code>ff_transactions</code>, <code>ff_budgets</code>, <code>ff_goals</code>,{' '}
-                      <code>ff_recurring</code>.
-                    </p>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60">
-                    <p className="font-extrabold text-slate-900 dark:text-white mb-1">
-                      3. Cơ chế Offline-First & Auto Fallback
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Mọi thao tác phản hồi tức thì dưới 16ms nhờ bộ đệm LocalStorage kết hợp đồng
-                      bộ bất đồng bộ lên Cloud PostgreSQL.
-                    </p>
                   </div>
                 </div>
               </div>
@@ -2102,6 +2348,7 @@ export default function App() {
         categories={categories}
         wallets={wallets}
         onSave={handleSaveTransaction}
+        onCreateCategory={handleCreateCategory}
       />
 
       {/* WALLET & TRANSFER MODAL */}
@@ -2115,17 +2362,18 @@ export default function App() {
         initialMode={walletModalMode}
         editingWallet={editingWallet}
         onSaveWallet={handleSaveWallet}
+        onDeleteWallet={handleDeleteWallet}
         onTransfer={handleTransferWallets}
       />
 
       {/* FLOATING TOAST WITH UNDO */}
       {toast && (
-        <div className="fixed bottom-16 lg:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 dark:bg-emerald-950 text-white text-xs font-semibold shadow-xl border border-slate-700/80 animate-fadeIn">
+        <div className="fixed bottom-16 lg:bottom-6 right-4 sm:right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 dark:bg-emerald-950 text-white text-xs font-semibold shadow-xl border border-slate-700/80">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{toast.message}</span>
           {toast.undoAction && (
             <button
-              type="button"
+                              type="button"
               onClick={() => {
                 toast.undoAction();
                 setToast(null);
