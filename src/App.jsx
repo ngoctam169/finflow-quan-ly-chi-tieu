@@ -28,7 +28,8 @@ import {
   Wallet,
   RotateCcw,
   Undo2,
-  ListFilter
+  ListFilter,
+  Palette
 } from 'lucide-react';
 import {
   INITIAL_WALLETS,
@@ -63,8 +64,15 @@ import {
   MonthComparisonModule,
   LifeOptimizationToolkit
 } from './components/SmartLifePlanner.jsx';
+import { PageMascotCompanion } from './components/PageMascot.jsx';
+import {
+  HUASHU_DIRECTIONS,
+  HuashuStyleBanner,
+  HuashuStudioModal
+} from './components/HuashuStyleStudio.jsx';
 
 const STORAGE_KEY = 'finflow_vn_state_v2_clean';
+const HUASHU_STORAGE_KEY = 'finflow_huashu_design_v3';
 
 const NAV_TABS = [
   { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
@@ -88,6 +96,76 @@ export default function App() {
   const [selectedMonth, setSelectedMonth] = useState('2026-11');
   const [hideBalance, setHideBalance] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
+
+  // Huashu Design System v3.2 + Page Mascot Interactive States
+  const [huashuConfig, setHuashuConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem(HUASHU_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return {
+      direction: 'midnight',
+      font: 'modern',
+      radius: 'balanced',
+      texture: 'grid'
+    };
+  });
+  const [mascotId, setMascotId] = useState(() => {
+    try {
+      return localStorage.getItem('finflow_page_mascot_id') || 'fox';
+    } catch {
+      return 'fox';
+    }
+  });
+  const [mascotReaction, setMascotReaction] = useState(null);
+  const [mascotSpeech, setMascotSpeech] = useState('');
+  const [huashuStudioOpen, setHuashuStudioOpen] = useState(false);
+
+  const triggerMascotReaction = useCallback((type = 'sparkle', speech = '', duration = 1150) => {
+    setMascotReaction({ type, duration, ts: Date.now() });
+    if (speech) setMascotSpeech(speech);
+  }, []);
+
+  const handleApplyHuashuDirection = useCallback(
+    (dir) => {
+      const next = {
+        direction: dir.id,
+        font: dir.font,
+        radius: dir.radius,
+        texture: dir.texture
+      };
+      setHuashuConfig(next);
+      setDarkMode(Boolean(dir.darkMode));
+      if (dir.recommendedMascot) {
+        setMascotId(dir.recommendedMascot);
+        try {
+          localStorage.setItem('finflow_page_mascot_id', dir.recommendedMascot);
+        } catch {
+          // ignore
+        }
+      }
+      triggerMascotReaction(
+        'sparkle',
+        `Đã chuyển sang phong cách "${dir.name}" (${dir.subtitle})!`
+      );
+    },
+    [triggerMascotReaction]
+  );
+
+  const handleUpdateHuashuConfig = useCallback((partial) => {
+    setHuashuConfig((prev) => ({ ...prev, ...partial }));
+  }, []);
+
+  const handleSelectMascot = useCallback((id) => {
+    setMascotId(id);
+    try {
+      localStorage.setItem('finflow_page_mascot_id', id);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Clean Initial State (0 transactions, 0 balances, essential wallets & categories pre-configured)
   const [wallets, setWallets] = useState(INITIAL_WALLETS);
@@ -173,6 +251,20 @@ export default function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
+
+  // Sync Huashu Design attributes to <html> element and localStorage
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-huashu-theme', huashuConfig.direction || 'midnight');
+    root.setAttribute('data-huashu-font', huashuConfig.font || 'modern');
+    root.setAttribute('data-huashu-radius', huashuConfig.radius || 'balanced');
+    root.setAttribute('data-huashu-texture', huashuConfig.texture || 'grid');
+    try {
+      localStorage.setItem(HUASHU_STORAGE_KEY, JSON.stringify(huashuConfig));
+    } catch {
+      // ignore
+    }
+  }, [huashuConfig]);
 
   // Global Keyboard Shortcuts (N = New Transaction, H = Hide/Show Balance)
   useEffect(() => {
@@ -355,6 +447,12 @@ export default function App() {
       if (res.ok) {
         const data = await res.json();
         applyServerState(data.state);
+        triggerMascotReaction(
+          txData.type === 'income' ? 'heart' : 'delighted',
+          txData.type === 'income'
+            ? `Tuyệt vời! Nguồn thu +${formatVND(txData.amount)} vừa được cộng vào ví!`
+            : `Đã ghi sổ khoản chi "${txData.title}" (${formatVND(txData.amount)})!`
+        );
         showToast(
           isEdit
             ? `Đã cập nhật: ${txData.title}`
@@ -372,6 +470,10 @@ export default function App() {
     const newTx = { ...txData, id: txData.id || `tx_${Date.now()}` };
     setTransactions((prev) =>
       isEdit ? prev.map((t) => (t.id === newTx.id ? newTx : t)) : [newTx, ...prev]
+    );
+    triggerMascotReaction(
+      txData.type === 'income' ? 'heart' : 'delighted',
+      `Đã lưu giao dịch "${newTx.title}"!`
     );
     showToast(`Đã lưu: ${newTx.title}`);
   };
@@ -507,6 +609,10 @@ export default function App() {
         const data = await res.json();
         applyServerState(data.state);
         confetti({ particleCount: 55, spread: 60, origin: { y: 0.7 } });
+        triggerMascotReaction(
+          'sparkle',
+          'Đã phân bổ ngân sách chi tiết cho toàn bộ các mục sinh hoạt trong tháng!'
+        );
         showToast('🎯 Đã áp dụng bộ phân bổ ngân sách chi tiết cho toàn bộ các mục trong tháng!');
         return;
       }
@@ -531,6 +637,10 @@ export default function App() {
         const data = await res.json();
         applyServerState(data.state);
         confetti({ particleCount: 70, spread: 65, origin: { y: 0.65 } });
+        triggerMascotReaction(
+          'heart',
+          `Hoan hô! Bạn vừa tích lũy thêm ${formatVND(val)} vào hũ mục tiêu!`
+        );
         showToast(`🎉 Đã tích lũy thêm ${formatVND(val)} vào hũ mục tiêu!`);
       }
     } catch {
@@ -684,7 +794,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row transition-colors">
+    <div className="huashu-app-shell min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row transition-colors">
       {/* LEFT SIDEBAR NAVIGATION (Desktop) */}
       <aside className="hidden lg:flex lg:w-64 xl:w-72 flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-5 shrink-0 sticky top-0 h-screen">
         <div>
@@ -826,6 +936,16 @@ export default function App() {
 
               <button
                 type="button"
+                onClick={() => setHuashuStudioOpen(true)}
+                title="Huashu Design Studio & Page Mascot"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/70 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition cursor-pointer"
+              >
+                <Palette className="w-4 h-4 text-emerald-500" />
+                <span className="hidden md:inline">Huashu × Mascot</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => setHideBalance((prev) => !prev)}
                 title="Ẩn/Hiện số tiền (Phím H)"
                 className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
@@ -862,6 +982,17 @@ export default function App() {
           {/* ==================== TAB 1: DASHBOARD (TỔNG QUAN) ==================== */}
           {activeTab === 'dashboard' && (
             <>
+              {/* 0. Huashu Design v3.2 × Page Mascot Interactive Studio Bar */}
+              <HuashuStyleBanner
+                huashuConfig={huashuConfig}
+                onApplyDirection={handleApplyHuashuDirection}
+                onOpenStudio={() => setHuashuStudioOpen(true)}
+                mascotId={mascotId}
+                onSelectMascot={handleSelectMascot}
+                externalReaction={mascotReaction}
+                onTriggerReaction={(type) => triggerMascotReaction(type)}
+              />
+
               {/* 1. Smart Natural Language Quick-Add Bar with Suggestion Chips */}
               <QuickAddBar
                 categories={categories}
@@ -2471,6 +2602,31 @@ export default function App() {
         onSaveWallet={handleSaveWallet}
         onDeleteWallet={handleDeleteWallet}
         onTransfer={handleTransferWallets}
+      />
+
+      {/* HUASHU DESIGN STUDIO & PAGE MASCOT MODAL */}
+      <HuashuStudioModal
+        isOpen={huashuStudioOpen}
+        onClose={() => setHuashuStudioOpen(false)}
+        huashuConfig={huashuConfig}
+        onUpdateConfig={handleUpdateHuashuConfig}
+        onApplyDirection={handleApplyHuashuDirection}
+        mascotId={mascotId}
+        onSelectMascot={handleSelectMascot}
+        externalReaction={mascotReaction}
+        onTriggerReaction={(type) => triggerMascotReaction(type)}
+      />
+
+      {/* FLOATING PAGE MASCOT INTERACTIVE COMPANION (nilbuild/page-mascot) */}
+      <PageMascotCompanion
+        mascotId={mascotId}
+        onSelectMascot={handleSelectMascot}
+        externalReaction={mascotReaction}
+        speechMessage={mascotSpeech}
+        onTriggerReaction={(type) => triggerMascotReaction(type)}
+        totalNetWorth={totalNetWorth}
+        monthExpense={monthExpense}
+        totalMonthlyBudget={totalMonthlyBudget}
       />
 
       {/* FLOATING TOAST WITH UNDO */}
