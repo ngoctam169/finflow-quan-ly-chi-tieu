@@ -3,10 +3,21 @@ import path from 'path';
 import * as esbuild from 'esbuild';
 
 const root = process.cwd();
+const vercelDir = path.join(root, '.vercel');
 const outDir = path.join(root, '.vercel', 'output');
 const staticDir = path.join(outDir, 'static');
 const funcDir = path.join(outDir, 'functions', 'api.func');
 
+try {
+  fs.unlinkSync(path.join(vercelDir, 'project.json'));
+} catch {
+  // ignore
+}
+try {
+  fs.unlinkSync(path.join(vercelDir, 'anonymous.json'));
+} catch {
+  // ignore
+}
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(staticDir, { recursive: true });
 fs.mkdirSync(funcDir, { recursive: true });
