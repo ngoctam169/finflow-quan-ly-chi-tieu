@@ -501,6 +501,29 @@ export async function upsertBudget({ category_id, monthly_limit }) {
   return { category_id, monthly_limit: limit };
 }
 
+export async function upsertBulkBudgets(items = []) {
+  await initDb();
+  if (!Array.isArray(items)) return [];
+
+  for (const item of items) {
+    if (!item?.category_id) continue;
+    const limit = Math.max(0, Math.round(Number(item.monthly_limit) || 0));
+    if (dbMode === 'postgresql' && pool) {
+      await pool.query(
+        `INSERT INTO ff_budgets (category_id, monthly_limit)
+         VALUES ($1, $2)
+         ON CONFLICT (category_id) DO UPDATE SET monthly_limit = EXCLUDED.monthly_limit`,
+        [item.category_id, limit]
+      );
+    } else {
+      const existing = memoryStore.budgets.find((b) => b.category_id === item.category_id);
+      if (existing) existing.monthly_limit = limit;
+      else memoryStore.budgets.push({ category_id: item.category_id, monthly_limit: limit });
+    }
+  }
+  return items;
+}
+
 export async function upsertGoal(payload) {
   await initDb();
   const goal = {

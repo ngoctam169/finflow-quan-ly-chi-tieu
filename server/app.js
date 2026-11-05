@@ -11,6 +11,7 @@ import {
   transferBetweenWallets,
   upsertCategory,
   upsertBudget,
+  upsertBulkBudgets,
   upsertGoal,
   deleteGoal,
   contributeToGoal,
@@ -134,6 +135,17 @@ app.post('/api/budgets', async (req, res) => {
     const budget = await upsertBudget(req.body || {});
     const state = await getFullState();
     res.json({ ok: true, budget, state });
+  } catch (err) {
+    res.status(400).json({ ok: false, error: err.message });
+  }
+});
+
+// 8b. Bulk Apply Smart Allocated Budgets
+app.post('/api/budgets/bulk', async (req, res) => {
+  try {
+    const budgets = await upsertBulkBudgets(req.body?.budgets || []);
+    const state = await getFullState();
+    res.json({ ok: true, budgets, state });
   } catch (err) {
     res.status(400).json({ ok: false, error: err.message });
   }

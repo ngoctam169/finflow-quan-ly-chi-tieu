@@ -58,20 +58,27 @@ import { QuickAddBar } from './components/QuickAddBar.jsx';
 import { TransactionModal } from './components/TransactionModal.jsx';
 import { WalletModal } from './components/WalletModal.jsx';
 import { CalendarLedgerView } from './components/CalendarLedgerView.jsx';
+import {
+  SmartIncomeAllocator,
+  MonthComparisonModule,
+  LifeOptimizationToolkit
+} from './components/SmartLifePlanner.jsx';
 
 const STORAGE_KEY = 'finflow_vn_state_v2_clean';
 
 const NAV_TABS = [
   { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { id: 'transactions', label: 'Sổ giao dịch', icon: ReceiptText },
-  { id: 'budgets', label: 'Ngân sách', icon: PieChart },
+  { id: 'budgets', label: 'Phân bổ & Ngân sách', icon: PieChart },
   { id: 'goals', label: 'Tích lũy & Định kỳ', icon: PiggyBank },
-  { id: 'analytics', label: 'Phân tích & Cloud DB', icon: BarChart3 }
+  { id: 'analytics', label: 'So sánh & Tối ưu sống', icon: BarChart3 }
 ];
 
 const MONTH_OPTIONS = [
   { value: '2026-11', label: 'Tháng 11 / 2026 (Hiện tại)' },
   { value: '2026-10', label: 'Tháng 10 / 2026' },
+  { value: '2026-09', label: 'Tháng 09 / 2026' },
+  { value: '2026-08', label: 'Tháng 08 / 2026' },
   { value: 'ALL', label: 'Tất cả các kỳ' }
 ];
 
@@ -118,6 +125,7 @@ export default function App() {
   // Budget Inline Editing
   const [editingBudgetCatId, setEditingBudgetCatId] = useState(null);
   const [budgetInputVal, setBudgetInputVal] = useState('');
+  const [showDashboardAllocator, setShowDashboardAllocator] = useState(true);
 
   // Savings Goal & Recurring Forms
   const [contributeGoalId, setContributeGoalId] = useState(null);
@@ -486,6 +494,27 @@ export default function App() {
         return [...prev, { category_id, monthly_limit: limit }];
       });
     }
+  };
+
+  const handleApplyBulkBudgets = async (budgetList) => {
+    try {
+      const res = await fetch('/api/budgets/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ budgets: budgetList })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        applyServerState(data.state);
+        confetti({ particleCount: 55, spread: 60, origin: { y: 0.7 } });
+        showToast('🎯 Đã áp dụng bộ phân bổ ngân sách chi tiết cho toàn bộ các mục trong tháng!');
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    setBudgets(budgetList);
+    showToast('🎯 Đã áp dụng bộ phân bổ ngân sách tháng!');
   };
 
   const handleContributeGoal = async (goalId) => {
@@ -1018,6 +1047,40 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {/* 3b. Smart Monthly Income Allocator directly on Dashboard */}
+              {showDashboardAllocator ? (
+                <SmartIncomeAllocator
+                  categories={categories}
+                  hideBalance={hideBalance}
+                  onApplyBudgets={handleApplyBulkBudgets}
+                  onRecordIncome={(amountVal) =>
+                    handleSaveTransaction({
+                      title: `Thu nhập / Ngân sách tháng ${selectedMonth === 'ALL' ? '11/2026' : selectedMonth.split('-').reverse().join('/')}`,
+                      amount: amountVal,
+                      type: 'income',
+                      category_id: 'cat_salary',
+                      wallet_id: 'w_bank',
+                      tx_date: '2026-11-05',
+                      note: 'Ghi nhận tự động từ Bộ Phân Bổ Chi Tiêu Tháng',
+                      tags: ['thunhập', 'phânbổ']
+                    })
+                  }
+                />
+              ) : (
+                <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    💡 Cần chia lại tiền trọ, ăn uống, tiết kiệm theo tổng thu nhập tháng?
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowDashboardAllocator(true)}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
+                  >
+                    Mở Bộ Phân Bổ Tự Động
+                  </button>
+                </div>
+              )}
 
               {/* 4. Recent Transactions & Essential Life Suggestions */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -1563,6 +1626,25 @@ export default function App() {
           {/* ==================== TAB 3: NGÂN SÁCH (BUDGET PLANNER WITH SUGGESTIONS) ==================== */}
           {activeTab === 'budgets' && (
             <div className="space-y-6">
+              {/* Smart Income Allocator at Top of Budget Tab */}
+              <SmartIncomeAllocator
+                categories={categories}
+                hideBalance={hideBalance}
+                onApplyBudgets={handleApplyBulkBudgets}
+                onRecordIncome={(amountVal) =>
+                  handleSaveTransaction({
+                    title: `Thu nhập tháng ${selectedMonth === 'ALL' ? '11/2026' : selectedMonth.split('-').reverse().join('/')}`,
+                    amount: amountVal,
+                    type: 'income',
+                    category_id: 'cat_salary',
+                    wallet_id: 'w_bank',
+                    tx_date: '2026-11-05',
+                    note: 'Ghi nhận từ Bộ Phân Bổ Chi Tiêu Tháng',
+                    tags: ['thunhập']
+                  })
+                }
+              />
+
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                   <div>
@@ -2210,6 +2292,31 @@ export default function App() {
           {/* ==================== TAB 5: PHÂN TÍCH & CLOUD DB (ANALYTICS & DB) ==================== */}
           {activeTab === 'analytics' && (
             <div className="space-y-6">
+              {/* 1. Month-over-Month Comparison Module */}
+              <MonthComparisonModule
+                transactions={transactions}
+                categories={categories}
+                currentMonth={selectedMonth}
+                hideBalance={hideBalance}
+                onQuickAddPastMonth={(defaultDate) => {
+                  setEditingTx({
+                    title: '',
+                    type: 'expense',
+                    category_id: 'cat_food',
+                    wallet_id: 'w_cash',
+                    tx_date: defaultDate
+                  });
+                  setTxModalOpen(true);
+                }}
+              />
+
+              {/* 2. Life Optimization Toolkit */}
+              <LifeOptimizationToolkit
+                totalNetWorth={totalNetWorth}
+                totalMonthlyBudget={totalMonthlyBudget}
+                hideBalance={hideBalance}
+              />
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm">
                   <span className="text-xs font-bold text-slate-400">
