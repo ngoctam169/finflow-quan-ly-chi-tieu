@@ -239,12 +239,65 @@ app.post('/api/ai-analyze', async (req, res) => {
       monthIncome = 0,
       monthExpense = 0,
       topCategories = [],
-      question = ''
+      question = '',
+      geminiApiKey = ''
     } = req.body || {};
 
     const fmt = (n) => new Intl.NumberFormat('vi-VN').format(Math.round(Number(n) || 0)) + ' ₫';
     const salary = Math.max(1000000, Number(monthlySalary) || 15000000);
     const hourly = Math.round(salary / 176);
+    const activeGeminiKey = String(geminiApiKey || process.env.GEMINI_API_KEY || '').trim();
+
+    // If a Google Gemini API Key is provided, call Gemini 2.5 Flash directly with structured JSON output
+    if (activeGeminiKey) {
+      try {
+        const price = Math.max(0, Number(itemPrice) || 0);
+        const hours = (price / hourly).toFixed(1);
+        const days = (price / (hourly * 8)).toFixed(1);
+        const topCatStr =
+          Array.isArray(topCategories) && topCategories.length > 0
+            ? topCategories.map((c) => `${c.name}: ${fmt(c.amount)}`).join(', ')
+            : 'Chưa có';
+
+        const promptText =
+          mode === 'impulse'
+            ? `Bạn là chuyên gia tài chính cá nhân FinFlow VN. Người dùng có thu nhập ${fmt(salary)}/tháng (1 giờ công = ${fmt(hourly)}), tổng số dư hiện tại ${fmt(totalNetWorth)}, tháng này đã thu ${fmt(monthIncome)} và chi ${fmt(monthExpense)}. Họ đang định mua "${itemName || 'Món đồ'}" với giá ${fmt(price)} (tương đương ${hours} giờ làm việc ~ ${days} ngày công). Hãy phân tích chống mua bốc đồng thật thẳng thắn, thực tế và trả về đúng JSON theo cấu trúc: {"verdict":"buy|wait|stop","badge":"tiêu đề ngắn có emoji","summary":"1 câu nhận xét cốt lõi","bullets":["ý 1 về giờ công","ý 2 về chi phí cơ hội/tác động ví","ý 3 lời khuyên hành động"]}`
+            : `Bạn là chuyên gia tài chính cá nhân FinFlow VN. Người dùng có thu nhập tham chiếu ${fmt(salary)}/tháng, tổng số dư các ví ${fmt(totalNetWorth)}, tháng này thu ${fmt(monthIncome)}, chi ${fmt(monthExpense)}, nhóm chi lớn nhất: ${topCatStr}. ${question ? `Câu hỏi của người dùng: "${question}".` : 'Hãy đánh giá dòng tiền tháng này.'} Trả về đúng JSON theo cấu trúc: {"verdict":"wait","badge":"✨ GEMINI 2.5 FLASH PHÂN TÍCH","summary":"1 câu tóm tắt sắc bén","bullets":["nhận xét 1","nhận xét 2","lời khuyên 3"]}`;
+
+        const gRes = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(activeGeminiKey)}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+              generationConfig: {
+                temperature: 0.4,
+                responseMimeType: 'application/json'
+              }
+            })
+          }
+        );
+
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          const rawText = gData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          const parsed = JSON.parse(rawText);
+          if (parsed && parsed.summary && Array.isArray(parsed.bullets)) {
+            return res.json({
+              ok: true,
+              engine: 'Gemini 2.5 Flash',
+              verdict: parsed.verdict || 'wait',
+              badge: parsed.badge || '✨ GEMINI 2.5 FLASH PHÂN TÍCH',
+              summary: parsed.summary,
+              bullets: parsed.bullets
+            });
+          }
+        }
+      } catch {
+        // Fallback to built-in Smart Financial Engine below if key is invalid or quota exceeded
+      }
+    }
 
     if (mode === 'impulse') {
       const price = Math.max(0, Number(itemPrice) || 0);
@@ -293,6 +346,7 @@ app.post('/api/ai-analyze', async (req, res) => {
 
       return res.json({
         ok: true,
+        engine: 'FinFlow Smart Rule Engine',
         verdict,
         badge,
         summary,

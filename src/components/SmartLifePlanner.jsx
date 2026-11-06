@@ -917,6 +917,14 @@ export function ImpulseBuyGuard({
   const [aiQuestion, setAiQuestion] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
+  const [showKeyInput, setShowKeyInput] = useState(false);
+  const [geminiKey, setGeminiKey] = useState(() => {
+    try {
+      return localStorage.getItem('gemini_custom_api_key') || '';
+    } catch {
+      return '';
+    }
+  });
   const [waitlist, setWaitlist] = useState(() => {
     try {
       const raw = localStorage.getItem('finflow_impulse_waitlist_v1');
@@ -985,7 +993,8 @@ export function ImpulseBuyGuard({
           monthIncome,
           monthExpense,
           topCategories,
-          question: customQuestion
+          question: customQuestion,
+          geminiApiKey: geminiKey.trim()
         })
       });
       if (res.ok) {
@@ -1097,12 +1106,20 @@ export function ImpulseBuyGuard({
             </h3>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
           {totalSaved > 0 && (
             <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-xs font-mono-num font-bold">
               Đã giữ lại: +{formatVND(totalSaved, hideBalance)}
             </span>
           )}
+          <button
+            type="button"
+            onClick={() => setShowKeyInput((prev) => !prev)}
+            className="btn secondary small cursor-pointer"
+            title="Cấu hình Google Gemini API Key (tùy chọn)"
+          >
+            <span>{geminiKey.trim() ? '✨ Gemini 2.5 Flash' : '⚙️ Nguồn AI'}</span>
+          </button>
           <button
             type="button"
             onClick={() => runAiAnalysis('overview')}
@@ -1113,6 +1130,44 @@ export function ImpulseBuyGuard({
           </button>
         </div>
       </div>
+
+      {showKeyInput && (
+        <div className="mb-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+          <p className="text-slate-500 dark:text-slate-300">
+            Mặc định ứng dụng chạy <strong>FinFlow Smart Rule Engine</strong> (phân tích tức thì 0ms theo công thức tài chính & giờ công, không cần key). Nếu muốn dùng <strong>Google Gemini 2.5 Flash</strong>, hãy dán API Key miễn phí từ{' '}
+            <a
+              href="https://aistudio.google.com/app/apikey"
+              target="_blank"
+              rel="noreferrer"
+              className="underline text-emerald-500 font-semibold"
+            >
+              Google AI Studio
+            </a>
+            :
+          </p>
+          <div className="flex items-center gap-2">
+            <input
+              type="password"
+              value={geminiKey}
+              onChange={(e) => {
+                setGeminiKey(e.target.value);
+                try {
+                  localStorage.setItem('gemini_custom_api_key', e.target.value.trim());
+                } catch {}
+              }}
+              placeholder="AIzaSy... (Để trống sẽ dùng bộ phân tích nội bộ 0ms)"
+              className="flex-1 px-3 py-1.5 rounded-lg font-mono text-xs"
+            />
+            <button
+              type="button"
+              onClick={() => setShowKeyInput(false)}
+              className="btn small cursor-pointer"
+            >
+              Lưu
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
         <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-2">
