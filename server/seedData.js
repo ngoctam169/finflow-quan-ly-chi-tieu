@@ -18,15 +18,6 @@ export const INITIAL_WALLETS = [
     account_number: 'Chuyển khoản / Thẻ ATM'
   },
   {
-    id: 'w_momo',
-    name: 'Ví điện tử',
-    type: 'ewallet',
-    balance: 0,
-    color: '#db2777',
-    icon: 'Smartphone',
-    account_number: 'MoMo / ZaloPay'
-  },
-  {
     id: 'w_saving',
     name: 'Tiết kiệm',
     type: 'saving',
@@ -38,7 +29,7 @@ export const INITIAL_WALLETS = [
 ];
 
 export const INITIAL_CATEGORIES = [
-  // Danh mục Chi tiêu thiết yếu cho cuộc sống hàng ngày
+  // 6 Danh mục Chi tiêu thiết yếu nhất cho cuộc sống hàng ngày (User có thể tự bấm + Thêm mục bất cứ lúc nào)
   {
     id: 'cat_food',
     name: 'Ăn uống',
@@ -46,7 +37,7 @@ export const INITIAL_CATEGORIES = [
     icon: 'Utensils',
     color: '#f97316',
     group_rule: 'needs',
-    keywords: ['ăn', 'cơm', 'phở', 'bún', 'mì', 'bánh', 'trưa', 'tối', 'sáng', 'lẩu', 'nướng', 'nhà hàng', 'quán']
+    keywords: ['ăn', 'cơm', 'phở', 'bún', 'mì', 'bánh', 'trưa', 'tối', 'sáng', 'cà phê', 'cafe', 'trà sữa', 'quán']
   },
   {
     id: 'cat_grocery',
@@ -56,15 +47,6 @@ export const INITIAL_CATEGORIES = [
     color: '#10b981',
     group_rule: 'needs',
     keywords: ['đi chợ', 'chợ', 'siêu thị', 'winmart', 'bachhoaxanh', 'coopmart', 'rau', 'thịt', 'cá', 'trái cây', 'sữa', 'nấu ăn', 'thực phẩm']
-  },
-  {
-    id: 'cat_coffee',
-    name: 'Cà phê',
-    type: 'expense',
-    icon: 'Coffee',
-    color: '#d97706',
-    group_rule: 'wants',
-    keywords: ['cà phê', 'cafe', 'coffee', 'highlands', 'phúc long', 'trà sữa', 'katinat', 'starbucks', 'sinh tố', 'nước ép', 'trà']
   },
   {
     id: 'cat_transport',
@@ -94,15 +76,6 @@ export const INITIAL_CATEGORIES = [
     keywords: ['shopee', 'lazada', 'tiktok', 'mua', 'áo', 'quần', 'giày', 'mỹ phẩm', 'skincare', 'cắt tóc', 'gội đầu', 'đồ gia dụng', 'quần áo']
   },
   {
-    id: 'cat_entertainment',
-    name: 'Giải trí',
-    type: 'expense',
-    icon: 'Gamepad2',
-    color: '#8b5cf6',
-    group_rule: 'wants',
-    keywords: ['xem phim', 'cgv', 'netflix', 'spotify', 'du lịch', 'nhậu', 'bia', 'sinh nhật', 'karaoke', 'game', 'concert']
-  },
-  {
     id: 'cat_health',
     name: 'Sức khỏe',
     type: 'expense',
@@ -111,34 +84,7 @@ export const INITIAL_CATEGORIES = [
     group_rule: 'needs',
     keywords: ['thuốc', 'khám', 'bệnh viện', 'gym', 'yoga', 'chạy bộ', 'cầu lông', 'bơi', 'vitamin', 'nha khoa', 'bảo hiểm']
   },
-  {
-    id: 'cat_education',
-    name: 'Học tập',
-    type: 'expense',
-    icon: 'GraduationCap',
-    color: '#06b6d4',
-    group_rule: 'savings',
-    keywords: ['sách', 'khóa học', 'udemy', 'coursera', 'tiếng anh', 'ielts', 'học phí', 'chatgpt', 'claude', 'phần mềm']
-  },
-  {
-    id: 'cat_family',
-    name: 'Gia đình',
-    type: 'expense',
-    icon: 'Users',
-    color: '#14b8a6',
-    group_rule: 'needs',
-    keywords: ['biếu', 'bố mẹ', 'gia đình', 'đám cưới', 'mừng cưới', 'lì xì', 'thăm bệnh', 'quà', 'từ thiện']
-  },
-  {
-    id: 'cat_invest_out',
-    name: 'Tiết kiệm',
-    type: 'expense',
-    icon: 'TrendingUp',
-    color: '#10b981',
-    group_rule: 'savings',
-    keywords: ['tiết kiệm', 'gửi góp', 'chứng khoán', 'cổ phiếu', 'vàng', 'quỹ mở', 'etf']
-  },
-  // Danh mục Thu nhập thiết yếu
+  // 2 Danh mục Thu nhập thiết yếu
   {
     id: 'cat_salary',
     name: 'Tiền lương',
@@ -149,31 +95,13 @@ export const INITIAL_CATEGORIES = [
     keywords: ['lương', 'salary', 'thu nhập chính', 'công ty']
   },
   {
-    id: 'cat_freelance',
-    name: 'Làm thêm',
-    type: 'income',
-    icon: 'Laptop',
-    color: '#0ea5e9',
-    group_rule: 'income',
-    keywords: ['freelance', 'dự án', 'job ngoài', 'làm thêm', 'kinh doanh', 'bán hàng', 'hoa hồng']
-  },
-  {
     id: 'cat_bonus',
-    name: 'Thưởng & Lãi',
+    name: 'Thu khác',
     type: 'income',
     icon: 'Sparkles',
     color: '#f59e0b',
     group_rule: 'income',
-    keywords: ['thưởng', 'bonus', 'cổ tức', 'lãi tiết kiệm', 'chốt lời', 'hoàn tiền', 'cashback']
-  },
-  {
-    id: 'cat_gift',
-    name: 'Thu khác',
-    type: 'income',
-    icon: 'Gift',
-    color: '#a855f7',
-    group_rule: 'income',
-    keywords: ['được tặng', 'lì xì', 'bán đồ cũ', 'pass đồ', 'thu khác']
+    keywords: ['thưởng', 'bonus', 'làm thêm', 'freelance', 'được tặng', 'lì xì', 'thu khác']
   }
 ];
 
@@ -187,7 +115,6 @@ export const INITIAL_TRANSACTIONS = [];
 export const QUICK_TEMPLATES = [
   { label: '🍜 Ăn uống', draftText: 'Ăn trưa ', category_id: 'cat_food', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 45k)' },
   { label: '🛒 Đi chợ', draftText: 'Đi chợ ', category_id: 'cat_grocery', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 150k)' },
-  { label: '☕ Cà phê', draftText: 'Cà phê ', category_id: 'cat_coffee', wallet_id: 'w_momo', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 35k)' },
   { label: '⛽ Đổ xăng', draftText: 'Đổ xăng ', category_id: 'cat_transport', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 70k)' },
   { label: '🏠 Hóa đơn', draftText: 'Thanh toán hóa đơn ', category_id: 'cat_housing', wallet_id: 'w_bank', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 500k)' },
   { label: '💼 Nhận lương', draftText: 'Lương tháng ', category_id: 'cat_salary', wallet_id: 'w_bank', type: 'income', placeholderHint: 'Gõ số tiền (VD: 15tr)' }

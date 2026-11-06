@@ -65,31 +65,43 @@ import {
 } from './components/SmartLifePlanner.jsx';
 import { Mascot, MASCOT_CATALOG } from './components/PageMascot.jsx';
 
-const STORAGE_KEY = 'finflow_vn_state_v2_clean';
+const STORAGE_KEY = 'finflow_vn_state_v3_minimal';
 
 const DEFAULT_WALLET_NAME_MAP = new Map(INITIAL_WALLETS.map((w) => [w.id, w.name]));
 const DEFAULT_CAT_NAME_MAP = new Map(INITIAL_CATEGORIES.map((c) => [c.id, c.name]));
+const REMOVED_BUILTIN_CAT_IDS = new Set([
+  'cat_coffee',
+  'cat_entertainment',
+  'cat_education',
+  'cat_family',
+  'cat_invest_out',
+  'cat_freelance',
+  'cat_gift'
+]);
 
 function normalizeWallets(list) {
-  if (!Array.isArray(list)) return INITIAL_WALLETS;
-  return list.map((w) =>
-    DEFAULT_WALLET_NAME_MAP.has(w.id) ? { ...w, name: DEFAULT_WALLET_NAME_MAP.get(w.id) } : w
-  );
+  if (!Array.isArray(list) || list.length === 0) return INITIAL_WALLETS;
+  return list
+    .filter((w) => !(w.id === 'w_momo' && Number(w.balance || 0) === 0))
+    .map((w) =>
+      DEFAULT_WALLET_NAME_MAP.has(w.id) ? { ...w, name: DEFAULT_WALLET_NAME_MAP.get(w.id) } : w
+    );
 }
 
 function normalizeCategories(list) {
-  if (!Array.isArray(list)) return INITIAL_CATEGORIES;
-  return list.map((c) =>
-    DEFAULT_CAT_NAME_MAP.has(c.id) ? { ...c, name: DEFAULT_CAT_NAME_MAP.get(c.id) } : c
-  );
+  if (!Array.isArray(list) || list.length === 0) return INITIAL_CATEGORIES;
+  return list
+    .filter((c) => !REMOVED_BUILTIN_CAT_IDS.has(c.id))
+    .map((c) =>
+      DEFAULT_CAT_NAME_MAP.has(c.id) ? { ...c, name: DEFAULT_CAT_NAME_MAP.get(c.id) } : c
+    );
 }
 
 const NAV_TABS = [
-  { id: 'dashboard', code: '01', label: 'Tổng quan', shortLabel: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'transactions', code: '02', label: 'Sổ giao dịch', shortLabel: 'Giao dịch', icon: ReceiptText },
-  { id: 'budgets', code: '03', label: 'Ngân sách', shortLabel: 'Ngân sách', icon: PieChart },
-  { id: 'goals', code: '04', label: 'Mục tiêu & Định kỳ', shortLabel: 'Mục tiêu', icon: PiggyBank },
-  { id: 'analytics', code: '05', label: 'Chống bốc đồng & Báo cáo', shortLabel: 'Bốc đồng', icon: BarChart3 }
+  { id: 'dashboard', code: '01', label: 'Ghi chép', shortLabel: 'Ghi chép', icon: LayoutDashboard },
+  { id: 'analytics', code: '02', label: 'Chống bốc đồng & AI', shortLabel: 'Chống bốc đồng', icon: BarChart3 },
+  { id: 'transactions', code: '03', label: 'Sổ thu chi', shortLabel: 'Sổ thu chi', icon: ReceiptText },
+  { id: 'budgets', code: '04', label: 'Ngân sách', shortLabel: 'Ngân sách', icon: PieChart }
 ];
 
 const MONTH_OPTIONS = [
@@ -159,6 +171,8 @@ export default function App() {
   // Inline 1-Click Quick Balance Editor in Wallet Index
   const [quickBalanceWalletId, setQuickBalanceWalletId] = useState(null);
   const [quickBalanceInput, setQuickBalanceInput] = useState('');
+  const [inlineNewCatOpen, setInlineNewCatOpen] = useState(false);
+  const [inlineNewCatName, setInlineNewCatName] = useState('');
 
   // Backend / Cloud PostgreSQL Sync State
   const [dbStatus, setDbStatus] = useState({
@@ -1119,7 +1133,7 @@ export default function App() {
                 <div className="panel">
                   <div className="flex items-center justify-between mb-3.5">
                     <h3 className="text-sm sm:text-base font-bold">
-                      {monthTransactions.length > 0 ? 'Giao dịch gần đây' : 'Chọn nhanh danh mục'}
+                      {monthTransactions.length > 0 ? 'Giao dịch gần đây' : 'Mục thiết yếu (Chạm để ghi)'}
                     </h3>
                     <div className="flex items-center gap-2">
                       {monthTransactions.length > 0 && (
@@ -1133,6 +1147,13 @@ export default function App() {
                       )}
                       <button
                         type="button"
+                        onClick={() => setInlineNewCatOpen((prev) => !prev)}
+                        className="btn secondary small"
+                      >
+                        + Thêm mục
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => {
                           setEditingTx(null);
                           setTxModalOpen(true);
@@ -1140,10 +1161,41 @@ export default function App() {
                         className="btn small"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        <span>Thêm</span>
+                        <span>Ghi mới</span>
                       </button>
                     </div>
                   </div>
+
+                  {inlineNewCatOpen && (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        if (!inlineNewCatName.trim()) return;
+                        await handleCreateCategory({
+                          name: inlineNewCatName.trim(),
+                          type: 'expense',
+                          icon: 'Tag',
+                          color: '#10b981',
+                          group_rule: 'needs'
+                        });
+                        setInlineNewCatName('');
+                        setInlineNewCatOpen(false);
+                      }}
+                      className="mb-3 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center gap-2"
+                    >
+                      <input
+                        type="text"
+                        value={inlineNewCatName}
+                        onChange={(e) => setInlineNewCatName(e.target.value)}
+                        placeholder="Nhập tên mục mới (VD: Con cái, Thú cưng, Giải trí...)"
+                        autoFocus
+                        className="flex-1 px-2.5 py-1.5 text-xs font-medium"
+                      />
+                      <button type="submit" className="btn small">
+                        Lưu mục
+                      </button>
+                    </form>
+                  )}
 
                   {monthTransactions.length === 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
@@ -1375,6 +1427,11 @@ export default function App() {
               {/* Anti-Impulse Buying Guard right on the Dashboard */}
               <ImpulseBuyGuard
                 hideBalance={hideBalance}
+                totalNetWorth={totalNetWorth}
+                monthIncome={monthIncome}
+                monthExpense={monthExpense}
+                transactions={monthTransactions}
+                categories={categories}
                 onShowToast={showToast}
                 onBuyForReal={(prefill) => {
                   setEditingTx(prefill);
@@ -2351,6 +2408,11 @@ export default function App() {
               {/* 0. Anti-Impulse Guard & 48h Cooling-Off Waitlist */}
               <ImpulseBuyGuard
                 hideBalance={hideBalance}
+                totalNetWorth={totalNetWorth}
+                monthIncome={monthIncome}
+                monthExpense={monthExpense}
+                transactions={monthTransactions}
+                categories={categories}
                 onShowToast={showToast}
                 onBuyForReal={(prefill) => {
                   setEditingTx(prefill);

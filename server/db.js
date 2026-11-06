@@ -135,6 +135,10 @@ export async function initDb() {
       for (const c of INITIAL_CATEGORIES) {
         await pool.query('UPDATE ff_categories SET name = $2 WHERE id = $1', [c.id, c.name]);
       }
+      await pool.query(
+        `DELETE FROM ff_categories WHERE id IN ('cat_coffee','cat_entertainment','cat_education','cat_family','cat_invest_out','cat_freelance','cat_gift')`
+      );
+      await pool.query(`DELETE FROM ff_wallets WHERE id = 'w_momo' AND balance = 0`);
     }
 
     dbMode = 'postgresql';

@@ -893,9 +893,18 @@ export function MonthComparisonModule({
 }
 
 /**
- * MODULE 2.5: Compact Impulse-Buy Guard (Chống mua bốc đồng & Giỏ chờ 48h)
+ * MODULE 2.5: Compact Impulse-Buy Guard + AI Financial Advisor
  */
-export function ImpulseBuyGuard({ hideBalance, onBuyForReal, onShowToast }) {
+export function ImpulseBuyGuard({
+  hideBalance,
+  totalNetWorth = 0,
+  monthIncome = 0,
+  monthExpense = 0,
+  transactions = [],
+  categories = [],
+  onBuyForReal,
+  onShowToast
+}) {
   const [monthlySalary, setMonthlySalary] = useState(() => {
     try {
       return localStorage.getItem('finflow_salary_ref') || '15000000';
@@ -905,6 +914,9 @@ export function ImpulseBuyGuard({ hideBalance, onBuyForReal, onShowToast }) {
   });
   const [itemName, setItemName] = useState('');
   const [itemPrice, setItemPrice] = useState('500000');
+  const [aiQuestion, setAiQuestion] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
   const [waitlist, setWaitlist] = useState(() => {
     try {
       const raw = localStorage.getItem('finflow_impulse_waitlist_v1');
@@ -944,6 +956,88 @@ export function ImpulseBuyGuard({ hideBalance, onBuyForReal, onShowToast }) {
   const priceVal = evaluateAmountExpression(itemPrice) || 0;
   const hoursNeeded = priceVal / hourlyRate;
   const workDaysNeeded = hoursNeeded / 8;
+
+  const topCategories = useMemo(() => {
+    const catMap = new Map(categories.map((c) => [c.id, c.name]));
+    const totals = new Map();
+    for (const tx of transactions) {
+      if (tx.type !== 'expense') continue;
+      totals.set(tx.category_id, (totals.get(tx.category_id) || 0) + (Number(tx.amount) || 0));
+    }
+    return Array.from(totals.entries())
+      .map(([id, amount]) => ({ name: catMap.get(id) || 'Khác', amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 3);
+  }, [transactions, categories]);
+
+  const runAiAnalysis = async (mode = 'impulse', customQuestion = '') => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode,
+          itemName: itemName.trim() || 'Món đồ định mua',
+          itemPrice: priceVal,
+          monthlySalary: salaryVal,
+          totalNetWorth,
+          monthIncome,
+          monthExpense,
+          topCategories,
+          question: customQuestion
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.ok) {
+          setAiResult(data);
+          setAiLoading(false);
+          return;
+        }
+      }
+    } catch {
+      // Instant client fallback below
+    }
+
+    const pct = ((priceVal / salaryVal) * 100).toFixed(1);
+    const name = itemName.trim() || 'Món đồ này';
+    if (mode === 'impulse') {
+      const stop = priceVal >= salaryVal * 0.15 || (totalNetWorth > 0 && priceVal > totalNetWorth * 0.5);
+      const buy = priceVal <= salaryVal * 0.03;
+      setAiResult({
+        verdict: stop ? 'stop' : buy ? 'buy' : 'wait',
+        badge: stop
+          ? '🔴 KHOAN MUA — ĐƯA VÀO GIỎ CHỜ 48H NGAY'
+          : buy
+          ? '🟢 CÓ THỂ MUA (TRONG NGƯỠNG AN TOÀN)'
+          : '🟡 NÊN CHỜ 48 GIỜ TRƯỚC KHI CHỐT ĐƠN',
+        summary: `"${name}" (${formatVND(priceVal)}) tiêu tốn ${hoursNeeded.toFixed(1)} giờ làm việc (~${workDaysNeeded.toFixed(1)} ngày công, bằng ${pct}% thu nhập tháng).`,
+        bullets: [
+          `Chi phí sức lao động: Bạn phải làm việc liên tục ${hoursNeeded.toFixed(1)} giờ mới đổi được món đồ này.`,
+          `Chi phí cơ hội: Số tiền này tương đương ${Math.max(1, Math.round(priceVal / 45000))} bữa ăn hoặc ${Math.max(1, Math.round(priceVal / 70000))} lần đổ đầy bình xăng.`,
+          buy
+            ? 'Gợi ý: Khoản chi nhỏ và nằm trong ngưỡng an toàn nếu bạn thực sự cần dùng ngay.'
+            : 'Lời khuyên: Hãy bấm "⏳ Hoãn 48h". Sau 2 ngày, 80% cảm giác muốn mua bốc đồng sẽ tự biến mất.'
+        ]
+      });
+    } else {
+      setAiResult({
+        verdict: 'wait',
+        badge: '🤖 AI ĐÁNH GIÁ CHI TIÊU & DÒNG TIỀN',
+        summary:
+          monthExpense === 0
+            ? `Số dư hiện tại: ${formatVND(totalNetWorth)}. Hãy ghi chép các khoản chi hàng ngày để AI theo dõi sát sao.`
+            : `Tháng này bạn đã thu ${formatVND(monthIncome)}, chi ${formatVND(monthExpense)}.`,
+        bullets: [
+          `Định mức chi an toàn mỗi ngày (theo thu nhập ${formatVND(salaryVal)}): Tối đa ${formatVND(Math.round((salaryVal * 0.7) / 30))}/ngày cho các mục thiết yếu.`,
+          `Quy tắc giữ tiền: Luôn cất trước 20% (${formatVND(Math.round(salaryVal * 0.2))}) vào ví Tiết kiệm ngay khi nhận lương.`,
+          `Mọi khoản mua sắm trên 300.000 ₫ đều nên kiểm tra giờ công và chờ 48h trước khi thanh toán.`
+        ]
+      });
+    }
+    setAiLoading(false);
+  };
 
   const handleAddToWaitlist = (e) => {
     if (e) e.preventDefault();
@@ -999,15 +1093,25 @@ export function ImpulseBuyGuard({ hideBalance, onBuyForReal, onShowToast }) {
           </div>
           <div>
             <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
-              Chống mua bốc đồng (Quy đổi giờ công & Giỏ chờ 48h)
+              Chống mua bốc đồng & AI Phân tích
             </h3>
           </div>
         </div>
-        {totalSaved > 0 && (
-          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-xs font-mono-num font-bold">
-            Đã giữ lại: +{formatVND(totalSaved, hideBalance)}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {totalSaved > 0 && (
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-xs font-mono-num font-bold">
+              Đã giữ lại: +{formatVND(totalSaved, hideBalance)}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => runAiAnalysis('overview')}
+            className="btn secondary small cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI đánh giá tháng này</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
@@ -1068,15 +1172,70 @@ export function ImpulseBuyGuard({ hideBalance, onBuyForReal, onShowToast }) {
               (~{workDaysNeeded.toFixed(1)} ngày công)
             </p>
           </div>
-          <button
-            type="button"
-            onClick={handleAddToWaitlist}
-            className="btn small shrink-0 cursor-pointer"
-          >
-            ⏳ Hoãn mua 48h
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => runAiAnalysis('impulse')}
+              disabled={aiLoading}
+              className="btn secondary small cursor-pointer"
+            >
+              🤖 {aiLoading ? 'Đang tính...' : 'Hỏi AI'}
+            </button>
+            <button
+              type="button"
+              onClick={handleAddToWaitlist}
+              className="btn small cursor-pointer"
+            >
+              ⏳ Hoãn 48h
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* AI Analysis Result Box */}
+      {aiResult && (
+        <div className="mt-3.5 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-emerald-500/40 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
+              {aiResult.badge}
+            </span>
+            <button
+              type="button"
+              onClick={() => setAiResult(null)}
+              className="text-[11px] text-slate-400 hover:text-slate-200 cursor-pointer"
+            >
+              Đóng ✕
+            </button>
+          </div>
+          <p className="text-xs font-bold text-slate-900 dark:text-white">{aiResult.summary}</p>
+          <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-300 list-disc pl-4">
+            {(aiResult.bullets || []).map((b, idx) => (
+              <li key={idx}>{b}</li>
+            ))}
+          </ul>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!aiQuestion.trim()) return;
+              runAiAnalysis('question', aiQuestion);
+              setAiQuestion('');
+            }}
+            className="pt-2 flex items-center gap-2"
+          >
+            <input
+              type="text"
+              value={aiQuestion}
+              onChange={(e) => setAiQuestion(e.target.value)}
+              placeholder="Hỏi thêm AI (VD: Lương 15tr chia tiêu sao cho dư 3tr?)..."
+              className="flex-1 px-3 py-1.5 rounded-lg text-xs"
+            />
+            <button type="submit" className="btn small cursor-pointer">
+              Gửi AI
+            </button>
+          </form>
+        </div>
+      )}
 
       {waitlist.length > 0 && (
         <div className="mt-3.5 pt-3 border-t border-slate-200/70 dark:border-slate-800">
