@@ -14,6 +14,23 @@ dotenv.config();
 
 const { Pool } = pg;
 
+function getTodayVN() {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+function getMonthVN() {
+  return getTodayVN().slice(0, 7);
+}
+
 // Provisioned Cloud PostgreSQL (Prisma Postgres / Neon Serverless - ap-southeast-1 Singapore)
 const DEFAULT_POSTGRES_URL =
   'postgres://2e8dc4ce0f3332db4d1ead7bd23909f4187f0345fabed0f3106ea96cabc3b1f6:sk_fyM_5jZeJ6299mfLvAk4P@db.prisma.io:5432/postgres?sslmode=require';
@@ -110,6 +127,14 @@ export async function initDb() {
     const { rows } = await pool.query('SELECT COUNT(*)::int AS cnt FROM ff_wallets');
     if (rows[0].cnt === 0) {
       await seedPostgresData();
+    } else {
+      // Keep default wallet & category labels concise without overwriting user balances
+      for (const w of INITIAL_WALLETS) {
+        await pool.query('UPDATE ff_wallets SET name = $2 WHERE id = $1', [w.id, w.name]);
+      }
+      for (const c of INITIAL_CATEGORIES) {
+        await pool.query('UPDATE ff_categories SET name = $2 WHERE id = $1', [c.id, c.name]);
+      }
     }
 
     dbMode = 'postgresql';
@@ -302,7 +327,7 @@ export async function createTransaction(payload) {
     type: payload.type === 'income' ? 'income' : 'expense',
     category_id: payload.category_id || (payload.type === 'income' ? 'cat_salary' : 'cat_food'),
     wallet_id: payload.wallet_id || 'w_cash',
-    tx_date: payload.tx_date || '2026-11-05',
+    tx_date: payload.tx_date || getTodayVN(),
     note: String(payload.note || '').trim(),
     tags: Array.isArray(payload.tags) ? payload.tags : []
   };
@@ -580,7 +605,7 @@ export async function contributeToGoal(id, { amount, wallet_id }) {
         type: 'expense',
         category_id: 'cat_invest_out',
         wallet_id,
-        tx_date: '2026-11-05',
+        tx_date: getTodayVN(),
         note: `Tích lũy mục tiêu ${goal.name}`,
         tags: ['tiếtkiệm', 'mụctiêu']
       });
@@ -598,7 +623,7 @@ export async function contributeToGoal(id, { amount, wallet_id }) {
       type: 'expense',
       category_id: 'cat_invest_out',
       wallet_id,
-      tx_date: '2026-11-05',
+      tx_date: getTodayVN(),
       note: `Tích lũy mục tiêu ${goal.name}`,
       tags: ['tiếtkiệm', 'mụctiêu']
     });
@@ -606,7 +631,7 @@ export async function contributeToGoal(id, { amount, wallet_id }) {
   return goal;
 }
 
-export async function payRecurringBill(id, { month = '2026-11', tx_date = '2026-11-05' } = {}) {
+export async function payRecurringBill(id, { month = getMonthVN(), tx_date = getTodayVN() } = {}) {
   await initDb();
 
   if (dbMode === 'postgresql' && pool) {

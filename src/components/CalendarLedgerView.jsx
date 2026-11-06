@@ -1,16 +1,21 @@
 import React from 'react';
-import { formatCompactVND, formatVND } from '../utils/smartParser.js';
+import {
+  formatCompactVND,
+  getTodayISO,
+  getCurrentMonthISO
+} from '../utils/smartParser.js';
 
 const WEEKDAYS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
 export function CalendarLedgerView({
-  month = '2026-11',
+  month = getCurrentMonthISO(),
   transactions = [],
   selectedDay,
   onSelectDay,
   hideBalance
 }) {
-  const targetMonth = month === 'ALL' ? '2026-11' : month;
+  const todayStr = getTodayISO();
+  const targetMonth = month === 'ALL' ? getCurrentMonthISO() : month;
   const [yearNum, monthNum] = targetMonth.split('-').map(Number);
 
   const daysInMonth = new Date(yearNum, monthNum, 0).getDate();
@@ -85,7 +90,7 @@ export function CalendarLedgerView({
           }
 
           const { day, dateStr, data } = cell;
-          const isToday = dateStr === '2026-11-05';
+          const isToday = dateStr === todayStr;
           const isSelected = selectedDay === dateStr;
           const hasActivity = data.income > 0 || data.expense > 0;
 

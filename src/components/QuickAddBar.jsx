@@ -4,7 +4,8 @@ import {
   parseNaturalTransaction,
   formatVND,
   formatCompactVND,
-  formatDateVN
+  formatDateVN,
+  getTodayISO
 } from '../utils/smartParser.js';
 import { DynamicIcon } from './IconMap.jsx';
 
@@ -31,7 +32,7 @@ export const QuickAddBar = React.memo(function QuickAddBar({
   const [justAdded, setJustAdded] = useState(null);
   const inputRef = useRef(null);
 
-  const todayStr = '2026-11-05';
+  const todayStr = getTodayISO();
 
   const parsed = useMemo(
     () => (text.trim() ? parseNaturalTransaction(text, categories, wallets, todayStr) : null),
@@ -104,23 +105,18 @@ export const QuickAddBar = React.memo(function QuickAddBar({
     : [];
 
   return (
-    <div className="panel" style={{ padding: '20px 22px' }}>
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div>
-          <span className="overline" style={{ marginBottom: 2 }}>
-            QUICK LEDGER INPUT · NHẬP NHANH 3 GIÂY
-          </span>
-          <strong className="serif-heading text-base font-medium">
-            Gõ nội dung kèm số tiền hoặc chọn mục gợi ý thiết yếu
-          </strong>
-        </div>
+    <div className="panel" style={{ padding: '16px 18px' }}>
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <strong className="text-sm font-bold" style={{ color: 'var(--text)' }}>
+          Ghi nhanh thu chi
+        </strong>
         <button
           type="button"
           onClick={() => onOpenFullModal()}
           className="btn secondary small"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Biểu mẫu đầy đủ [N]</span>
+          <span>Chọn danh mục</span>
         </button>
       </div>
 
@@ -131,13 +127,13 @@ export const QuickAddBar = React.memo(function QuickAddBar({
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Ví dụ: Ăn trưa 45k, Đi chợ 120k, Đổ xăng 70k, Lương tháng 18tr..."
+            placeholder="Gõ nhanh: Ăn tối 50k, Đổ xăng 70k, Lương 15tr..."
             className="flex-1 px-3.5 py-2.5 text-sm font-medium"
-            style={{ minHeight: 44 }}
+            style={{ minHeight: 42 }}
           />
           <button type="submit" className="btn shrink-0">
             <Plus className="w-4 h-4" />
-            <span>{parsed?.isValid ? 'Ghi sổ ngay' : 'Điền số tiền'}</span>
+            <span>{parsed?.isValid ? 'Lưu ngay' : 'Thêm'}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -221,14 +217,7 @@ export const QuickAddBar = React.memo(function QuickAddBar({
       </form>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
-        <span
-          className="font-mono-num text-[11px] shrink-0 mr-1"
-          style={{ color: 'var(--muted)' }}
-        >
-          CHỌN NHANH MỤC:
-        </span>
         {quickTemplates.map((tpl, idx) => {
-          const cleanLabel = tpl.label.replace(/^[^\p{L}\p{N}]+\s*/u, '');
           return (
             <button
               key={idx}
@@ -242,7 +231,7 @@ export const QuickAddBar = React.memo(function QuickAddBar({
                 color: 'var(--text)'
               }}
             >
-              {cleanLabel}
+              {tpl.label}
             </button>
           );
         })}

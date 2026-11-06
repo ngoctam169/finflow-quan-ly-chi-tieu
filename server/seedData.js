@@ -1,7 +1,7 @@
 export const INITIAL_WALLETS = [
   {
     id: 'w_cash',
-    name: 'Tiền mặt (Ví cá nhân)',
+    name: 'Tiền mặt',
     type: 'cash',
     balance: 0,
     color: '#d97706',
@@ -10,7 +10,7 @@ export const INITIAL_WALLETS = [
   },
   {
     id: 'w_bank',
-    name: 'Tài khoản Ngân hàng',
+    name: 'Ngân hàng',
     type: 'bank',
     balance: 0,
     color: '#059669',
@@ -19,16 +19,16 @@ export const INITIAL_WALLETS = [
   },
   {
     id: 'w_momo',
-    name: 'Ví điện tử (MoMo / ZaloPay)',
+    name: 'Ví điện tử',
     type: 'ewallet',
     balance: 0,
     color: '#db2777',
     icon: 'Smartphone',
-    account_number: 'Thanh toán nhanh'
+    account_number: 'MoMo / ZaloPay'
   },
   {
     id: 'w_saving',
-    name: 'Quỹ Tiết kiệm / Đầu tư',
+    name: 'Tiết kiệm',
     type: 'saving',
     balance: 0,
     color: '#2563eb',
@@ -41,7 +41,7 @@ export const INITIAL_CATEGORIES = [
   // Danh mục Chi tiêu thiết yếu cho cuộc sống hàng ngày
   {
     id: 'cat_food',
-    name: 'Ăn uống hàng ngày',
+    name: 'Ăn uống',
     type: 'expense',
     icon: 'Utensils',
     color: '#f97316',
@@ -50,7 +50,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_grocery',
-    name: 'Đi chợ & Siêu thị',
+    name: 'Đi chợ',
     type: 'expense',
     icon: 'ShoppingBag',
     color: '#10b981',
@@ -59,7 +59,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_coffee',
-    name: 'Cà phê & Trà sữa',
+    name: 'Cà phê',
     type: 'expense',
     icon: 'Coffee',
     color: '#d97706',
@@ -68,7 +68,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_transport',
-    name: 'Di chuyển & Xăng xe',
+    name: 'Di chuyển',
     type: 'expense',
     icon: 'Car',
     color: '#3b82f6',
@@ -77,7 +77,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_housing',
-    name: 'Tiền nhà & Điện nước',
+    name: 'Hóa đơn',
     type: 'expense',
     icon: 'Home',
     color: '#6366f1',
@@ -86,7 +86,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_shopping',
-    name: 'Mua sắm & Đồ dùng',
+    name: 'Mua sắm',
     type: 'expense',
     icon: 'CreditCard',
     color: '#ec4899',
@@ -95,7 +95,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_entertainment',
-    name: 'Giải trí & Gặp gỡ',
+    name: 'Giải trí',
     type: 'expense',
     icon: 'Gamepad2',
     color: '#8b5cf6',
@@ -104,7 +104,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_health',
-    name: 'Sức khỏe & Thể thao',
+    name: 'Sức khỏe',
     type: 'expense',
     icon: 'HeartPulse',
     color: '#ef4444',
@@ -113,7 +113,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_education',
-    name: 'Học tập & Phát triển',
+    name: 'Học tập',
     type: 'expense',
     icon: 'GraduationCap',
     color: '#06b6d4',
@@ -122,7 +122,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_family',
-    name: 'Gia đình & Hiếu hỉ',
+    name: 'Gia đình',
     type: 'expense',
     icon: 'Users',
     color: '#14b8a6',
@@ -131,7 +131,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_invest_out',
-    name: 'Tiết kiệm & Đầu tư',
+    name: 'Tiết kiệm',
     type: 'expense',
     icon: 'TrendingUp',
     color: '#10b981',
@@ -141,7 +141,7 @@ export const INITIAL_CATEGORIES = [
   // Danh mục Thu nhập thiết yếu
   {
     id: 'cat_salary',
-    name: 'Lương chính thức',
+    name: 'Tiền lương',
     type: 'income',
     icon: 'Briefcase',
     color: '#10b981',
@@ -150,7 +150,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_freelance',
-    name: 'Thu nhập phụ & Freelance',
+    name: 'Làm thêm',
     type: 'income',
     icon: 'Laptop',
     color: '#0ea5e9',
@@ -159,7 +159,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_bonus',
-    name: 'Thưởng & Lãi đầu tư',
+    name: 'Thưởng & Lãi',
     type: 'income',
     icon: 'Sparkles',
     color: '#f59e0b',
@@ -168,7 +168,7 @@ export const INITIAL_CATEGORIES = [
   },
   {
     id: 'cat_gift',
-    name: 'Được tặng & Thu khác',
+    name: 'Thu khác',
     type: 'income',
     icon: 'Gift',
     color: '#a855f7',
@@ -185,14 +185,12 @@ export const INITIAL_TRANSACTIONS = [];
 
 // Gợi ý thông minh cho cuộc sống hàng ngày (chỉ điền sẵn tên gợi ý, người dùng tự gõ số tiền thực tế)
 export const QUICK_TEMPLATES = [
-  { label: '🍜 Ăn sáng / Ăn trưa', draftText: 'Ăn trưa ', category_id: 'cat_food', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 45k)' },
-  { label: '🛒 Đi chợ / Siêu thị', draftText: 'Đi chợ mua thực phẩm ', category_id: 'cat_grocery', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 150k)' },
-  { label: '☕ Cà phê / Trà sữa', draftText: 'Cà phê ', category_id: 'cat_coffee', wallet_id: 'w_momo', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 35k)' },
-  { label: '⛽ Đổ xăng / Gửi xe', draftText: 'Đổ xăng xe máy ', category_id: 'cat_transport', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 70k)' },
-  { label: '🏠 Tiền nhà / Điện nước', draftText: 'Thanh toán hóa đơn ', category_id: 'cat_housing', wallet_id: 'w_bank', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 500k)' },
-  { label: '🛍️ Mua sắm cá nhân', draftText: 'Mua đồ ', category_id: 'cat_shopping', wallet_id: 'w_bank', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 200k)' },
-  { label: '💊 Thuốc men / Y tế', draftText: 'Mua thuốc / chăm sóc sức khỏe ', category_id: 'cat_health', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ tiếp số tiền (VD: 100k)' },
-  { label: '💼 Nhận lương / Thu nhập', draftText: 'Lương tháng ', category_id: 'cat_salary', wallet_id: 'w_bank', type: 'income', placeholderHint: 'Gõ tiếp số tiền (VD: 15tr)' }
+  { label: '🍜 Ăn uống', draftText: 'Ăn trưa ', category_id: 'cat_food', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 45k)' },
+  { label: '🛒 Đi chợ', draftText: 'Đi chợ ', category_id: 'cat_grocery', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 150k)' },
+  { label: '☕ Cà phê', draftText: 'Cà phê ', category_id: 'cat_coffee', wallet_id: 'w_momo', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 35k)' },
+  { label: '⛽ Đổ xăng', draftText: 'Đổ xăng ', category_id: 'cat_transport', wallet_id: 'w_cash', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 70k)' },
+  { label: '🏠 Hóa đơn', draftText: 'Thanh toán hóa đơn ', category_id: 'cat_housing', wallet_id: 'w_bank', type: 'expense', placeholderHint: 'Gõ số tiền (VD: 500k)' },
+  { label: '💼 Nhận lương', draftText: 'Lương tháng ', category_id: 'cat_salary', wallet_id: 'w_bank', type: 'income', placeholderHint: 'Gõ số tiền (VD: 15tr)' }
 ];
 
 export const RECURRING_SUGGESTIONS = [

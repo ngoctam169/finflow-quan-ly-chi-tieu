@@ -32,8 +32,8 @@
   --huashu-dim: #8b867e;
   --huashu-accent: #d97757;
   --huashu-hair: rgba(26, 25, 24, 0.12);
-  --huashu-serif: "Source Serif 4", "Times New Roman", serif;
-  --huashu-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --huashu-serif: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --huashu-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --huashu-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 }
 
@@ -607,7 +607,7 @@
 }
 
 .stats-strip > .stats-inner > div {
-  padding: 22px 24px;
+  padding: 14px 18px;
   border-right: 1px solid var(--line);
 }
 .stats-strip > .stats-inner > div:first-child {
@@ -616,18 +616,18 @@
 
 .stats-strip strong {
   display: block;
-  margin: 4px 0 4px;
-  font-family: var(--huashu-serif);
-  font-size: clamp(1.45rem, 2.2vw, 1.95rem);
-  font-weight: 500;
+  margin: 2px 0 0;
+  font-family: var(--huashu-mono);
+  font-size: clamp(1.05rem, 1.8vw, 1.45rem);
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .stats-strip > .stats-inner > div > span:not(.stat-sub) {
   display: block;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
-  color: var(--text);
+  color: var(--muted);
 }
 
 .stats-strip span.stat-sub {
@@ -665,10 +665,10 @@
 
 .panel {
   border: 1px solid var(--line) !important;
-  border-radius: 9px !important;
+  border-radius: 12px !important;
   background: var(--surface) !important;
   box-shadow: none !important;
-  padding: 24px;
+  padding: 18px;
 }
 
 /* ============================================================================
@@ -966,15 +966,9 @@ select:focus {
 
 @media (max-width: 520px) {
   .stats-strip > .stats-inner {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
   .stats-strip > .stats-inner > div {
-    padding: 16px 0;
-    border-left: 0 !important;
-    border-right: 0 !important;
-    border-bottom: 1px solid var(--line) !important;
-  }
-  .stats-strip > .stats-inner > div:last-child {
-    border-bottom: 0 !important;
+    padding: 12px 10px;
   }
 }

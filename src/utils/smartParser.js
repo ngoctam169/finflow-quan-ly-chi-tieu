@@ -1,3 +1,41 @@
+export function getTodayISO() {
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(new Date());
+  } catch {
+    const now = new Date();
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    const d = String(now.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+}
+
+export function getOffsetDateISO(offsetDays = 0) {
+  const baseStr = getTodayISO();
+  const [y, m, d] = baseStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + offsetDays));
+  const ry = dt.getUTCFullYear();
+  const rm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const rd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${ry}-${rm}-${rd}`;
+}
+
+export function getCurrentMonthISO() {
+  return getTodayISO().slice(0, 7);
+}
+
+export function formatShortDM(dateStr) {
+  if (!dateStr) return '';
+  const parts = String(dateStr).split('-');
+  if (parts.length !== 3) return dateStr;
+  return `${parts[2]}/${parts[1]}`;
+}
+
 export function formatVND(amount, hideBalance = false) {
   if (hideBalance) return '•••••••• ₫';
   const num = Math.round(Number(amount) || 0);
@@ -23,11 +61,12 @@ export function formatCompactVND(amount, hideBalance = false) {
 
 export function formatDateVN(dateStr) {
   if (!dateStr) return '';
-  if (dateStr === '2026-11-05') return 'Hôm nay, 05/11/2026';
-  if (dateStr === '2026-11-04') return 'Hôm qua, 04/11/2026';
   const parts = String(dateStr).split('-');
   if (parts.length !== 3) return dateStr;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  const dmy = `${parts[2]}/${parts[1]}/${parts[0]}`;
+  if (dateStr === getTodayISO()) return `Hôm nay, ${dmy}`;
+  if (dateStr === getOffsetDateISO(-1)) return `Hôm qua, ${dmy}`;
+  return dmy;
 }
 
 /**
@@ -103,7 +142,7 @@ export function evaluateAmountExpression(expr) {
  * - "Lương tháng 11 25tr ngân hàng"
  * - "Mua áo Shopee 320k hôm qua"
  */
-export function parseNaturalTransaction(inputText, categories = [], wallets = [], defaultDate = '2026-11-05') {
+export function parseNaturalTransaction(inputText, categories = [], wallets = [], defaultDate = getTodayISO()) {
   const raw = String(inputText || '').trim();
   if (!raw) return null;
 
@@ -124,11 +163,11 @@ export function parseNaturalTransaction(inputText, categories = [], wallets = []
   }
 
   // 2. Detect Date ("hôm qua", "hôm kia", "hôm nay")
-  let tx_date = defaultDate;
+  let tx_date = defaultDate || getTodayISO();
   if (lower.includes('hôm qua') || lower.includes('hom qua')) {
-    tx_date = '2026-11-04';
+    tx_date = getOffsetDateISO(-1);
   } else if (lower.includes('hôm kia') || lower.includes('hom kia')) {
-    tx_date = '2026-11-03';
+    tx_date = getOffsetDateISO(-2);
   }
 
   // 3. Detect Wallet
