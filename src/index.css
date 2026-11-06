@@ -32,7 +32,7 @@
   --huashu-dim: #8b867e;
   --huashu-accent: #d97757;
   --huashu-hair: rgba(26, 25, 24, 0.12);
-  --huashu-serif: "Source Serif 4", Georgia, serif;
+  --huashu-serif: "Source Serif 4", "Times New Roman", serif;
   --huashu-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --huashu-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
 }
