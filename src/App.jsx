@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   LayoutDashboard,
@@ -92,20 +92,40 @@ export default function App() {
   const mascotData = MASCOT_CATALOG[0];
   const [mascotReaction, setMascotReaction] = useState(null);
   const [mascotSpeech, setMascotSpeech] = useState('');
+  const hasLocalEditsRef = useRef(false);
 
   const triggerMascotReaction = useCallback((type = 'sparkle', speech = '', duration = 1150) => {
     setMascotReaction({ type, duration, ts: Date.now() });
     if (speech) setMascotSpeech(speech);
   }, []);
 
+  // Load cached state synchronously on first render for 0ms startup
+  const initialCached = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+    return null;
+  }, []);
+
   // Clean Initial State (0 transactions, 0 balances, essential wallets & categories pre-configured)
-  const [wallets, setWallets] = useState(INITIAL_WALLETS);
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
-  const [budgets, setBudgets] = useState(INITIAL_BUDGETS);
-  const [goals, setGoals] = useState(INITIAL_GOALS);
-  const [recurring, setRecurring] = useState(INITIAL_RECURRING);
-  const [transactions, setTransactions] = useState(INITIAL_TRANSACTIONS);
-  const [quickTemplates, setQuickTemplates] = useState(QUICK_TEMPLATES);
+  const [wallets, setWallets] = useState(() => initialCached?.wallets || INITIAL_WALLETS);
+  const [categories, setCategories] = useState(() => initialCached?.categories || INITIAL_CATEGORIES);
+  const [budgets, setBudgets] = useState(() => initialCached?.budgets || INITIAL_BUDGETS);
+  const [goals, setGoals] = useState(() => initialCached?.goals || INITIAL_GOALS);
+  const [recurring, setRecurring] = useState(() => initialCached?.recurring || INITIAL_RECURRING);
+  const [transactions, setTransactions] = useState(
+    () => initialCached?.transactions || INITIAL_TRANSACTIONS
+  );
+  const [quickTemplates, setQuickTemplates] = useState(
+    () => initialCached?.quickTemplates || QUICK_TEMPLATES
+  );
+
+  // Inline 1-Click Quick Balance Editor in Wallet Index
+  const [quickBalanceWalletId, setQuickBalanceWalletId] = useState(null);
+  const [quickBalanceInput, setQuickBalanceInput] = useState('');
 
   // Backend / Cloud PostgreSQL Sync State
   const [dbStatus, setDbStatus] = useState({
@@ -220,30 +240,49 @@ export default function App() {
     }
   }, []);
 
-  const fetchCloudState = useCallback(async () => {
+  // Persist local state changes to localStorage automatically (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          STORAGE_KEY,
+          JSON.stringify({
+            wallets,
+            categories,
+            budgets,
+            goals,
+            recurring,
+            transactions,
+            quickTemplates
+          })
+        );
+      } catch {
+        // ignore
+      }
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [wallets, categories, budgets, goals, recurring, transactions, quickTemplates]);
+
+  const fetchCloudState = useCallback(async (forceOverwrite = false) => {
     setIsSyncing(true);
     try {
-      // Remove legacy demo localStorage key if present
       localStorage.removeItem('finflow_vn_state_v1');
       const res = await fetch('/api/state');
       if (res.ok) {
         const data = await res.json();
-        applyServerState(data);
+        if (forceOverwrite || !hasLocalEditsRef.current) {
+          applyServerState(data);
+        }
       }
     } catch {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) applyServerState(JSON.parse(saved));
-      } catch {
-        // ignore
-      }
+      // Offline fallback already hydrated from localStorage
     } finally {
       setIsSyncing(false);
     }
   }, [applyServerState]);
 
   useEffect(() => {
-    fetchCloudState();
+    fetchCloudState(false);
   }, [fetchCloudState]);
 
   const categoryMap = useMemo(
@@ -346,62 +385,75 @@ export default function App() {
     return Array.from(groups.values());
   }, [filteredLedgerTransactions]);
 
-  // CRUD Handlers
-  const handleSaveTransaction = async (txData) => {
+  // ====================================================================
+  // INSTANT 0ms OPTIMISTIC CRUD HANDLERS (Background Cloud Sync)
+  // ====================================================================
+  const handleSaveTransaction = useCallback((txData) => {
+    hasLocalEditsRef.current = true;
     const isEdit = Boolean(txData.id);
-    try {
-      const url = isEdit ? `/api/transactions/${txData.id}` : '/api/transactions';
-      const method = isEdit ? 'PUT' : 'POST';
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(txData)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        triggerMascotReaction(
-          txData.type === 'income' ? 'heart' : 'delighted',
-          txData.type === 'income'
-            ? `Tuyệt vời! Nguồn thu +${formatVND(txData.amount)} vừa được cộng vào ví!`
-            : `Đã ghi sổ khoản chi "${txData.title}" (${formatVND(txData.amount)})!`
-        );
-        showToast(
-          isEdit
-            ? `Đã cập nhật: ${txData.title}`
-            : `Đã ghi nhận: ${txData.title} (${formatVND(txData.amount)})`,
-          !isEdit && data.transaction?.id
-            ? () => handleDeleteTransaction(data.transaction.id, true)
-            : null
-        );
-        return;
-      }
-    } catch {
-      // Offline fallback
-    }
+    const amt = Number(txData.amount) || 0;
+    const newTx = {
+      ...txData,
+      id: txData.id || `tx_${Date.now()}`,
+      amount: amt
+    };
 
-    const newTx = { ...txData, id: txData.id || `tx_${Date.now()}` };
-    setTransactions((prev) =>
-      isEdit ? prev.map((t) => (t.id === newTx.id ? newTx : t)) : [newTx, ...prev]
-    );
+    // 1. Update transactions & wallet balances immediately in 0ms
+    setTransactions((prev) => {
+      const oldTx = isEdit ? prev.find((t) => t.id === newTx.id) : null;
+      setWallets((wPrev) =>
+        wPrev.map((w) => {
+          let bal = Number(w.balance) || 0;
+          if (oldTx && oldTx.wallet_id === w.id) {
+            bal += oldTx.type === 'income' ? -Number(oldTx.amount) : Number(oldTx.amount);
+          }
+          if (newTx.wallet_id === w.id) {
+            bal += newTx.type === 'income' ? amt : -amt;
+          }
+          return bal !== w.balance ? { ...w, balance: bal } : w;
+        })
+      );
+      return isEdit ? prev.map((t) => (t.id === newTx.id ? newTx : t)) : [newTx, ...prev];
+    });
+
     triggerMascotReaction(
-      txData.type === 'income' ? 'heart' : 'delighted',
-      `Đã lưu giao dịch "${newTx.title}"!`
+      newTx.type === 'income' ? 'heart' : 'delighted',
+      newTx.type === 'income'
+        ? `Tuyệt vời! Nguồn thu +${formatVND(amt)} vừa được cộng vào ví!`
+        : `Đã ghi sổ khoản chi "${newTx.title}" (${formatVND(amt)})!`
     );
-    showToast(`Đã lưu: ${newTx.title}`);
-  };
+    showToast(
+      isEdit
+        ? `Đã cập nhật: ${newTx.title}`
+        : `Đã ghi nhận: ${newTx.title} (${formatVND(amt)})`
+    );
 
-  const handleDeleteTransaction = async (id, silent = false) => {
+    // 2. Sync to Cloud PostgreSQL in background without blocking UI
+    const url = isEdit ? `/api/transactions/${txData.id}` : '/api/transactions';
+    const method = isEdit ? 'PUT' : 'POST';
+    fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newTx)
+    }).catch(() => {});
+  }, [triggerMascotReaction, showToast]);
+
+  const handleDeleteTransaction = useCallback((id, silent = false) => {
+    hasLocalEditsRef.current = true;
     const target = transactions.find((t) => t.id === id);
     setTransactions((prev) => prev.filter((t) => t.id !== id));
-    try {
-      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-      }
-    } catch {
-      // ignore
+    if (target) {
+      const amt = Number(target.amount) || 0;
+      setWallets((wPrev) =>
+        wPrev.map((w) =>
+          w.id === target.wallet_id
+            ? {
+                ...w,
+                balance: (Number(w.balance) || 0) + (target.type === 'income' ? -amt : amt)
+              }
+            : w
+        )
+      );
     }
     if (!silent && target) {
       showToast(`Đã xóa giao dịch "${target.title}"`, () => {
@@ -409,160 +461,144 @@ export default function App() {
         handleSaveTransaction(rest);
       });
     }
-  };
+    fetch(`/api/transactions/${id}`, { method: 'DELETE' }).catch(() => {});
+  }, [transactions, showToast, handleSaveTransaction]);
 
-  const handleCreateCategory = async (catData) => {
-    try {
-      const res = await fetch('/api/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(catData)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast(`Đã thêm danh mục mới: ${catData.name}`);
-        return data.category;
-      }
-    } catch {
-      // fallback
-    }
+  const handleCreateCategory = useCallback(async (catData) => {
+    hasLocalEditsRef.current = true;
     const localCat = { ...catData, id: `cat_${Date.now()}` };
     setCategories((prev) => [...prev, localCat]);
+    showToast(`Đã thêm danh mục mới: ${catData.name}`);
+    fetch('/api/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(localCat)
+    }).catch(() => {});
     return localCat;
-  };
+  }, [showToast]);
 
-  const handleSaveWallet = async (walletData) => {
-    try {
-      const res = await fetch('/api/wallets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(walletData)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast(`Đã cập nhật nguồn tiền: ${walletData.name}`);
-      }
-    } catch {
-      showToast('Đã lưu ví nguồn tiền');
-    }
-  };
+  const handleSaveWallet = useCallback((walletData) => {
+    hasLocalEditsRef.current = true;
+    const savedWallet = {
+      ...walletData,
+      id: walletData.id || `w_${Date.now()}`,
+      balance: Number(walletData.balance) || 0
+    };
+    setWallets((prev) => {
+      const exists = prev.some((w) => w.id === savedWallet.id);
+      return exists
+        ? prev.map((w) => (w.id === savedWallet.id ? { ...w, ...savedWallet } : w))
+        : [...prev, savedWallet];
+    });
+    triggerMascotReaction(
+      'sparkle',
+      `Đã cập nhật số dư "${savedWallet.name}": ${formatVND(savedWallet.balance)}!`
+    );
+    showToast(`Đã cập nhật nguồn tiền: ${savedWallet.name} (${formatVND(savedWallet.balance)})`);
+    fetch('/api/wallets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(savedWallet)
+    }).catch(() => {});
+  }, [showToast, triggerMascotReaction]);
 
-  const handleDeleteWallet = async (walletId) => {
-    try {
-      const res = await fetch(`/api/wallets/${walletId}`, { method: 'DELETE' });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast('Đã xóa ví nguồn tiền');
-      }
-    } catch {
-      setWallets((prev) => prev.filter((w) => w.id !== walletId));
-    }
-  };
+  const handleDeleteWallet = useCallback((walletId) => {
+    hasLocalEditsRef.current = true;
+    setWallets((prev) => prev.filter((w) => w.id !== walletId));
+    showToast('Đã xóa ví nguồn tiền');
+    fetch(`/api/wallets/${walletId}`, { method: 'DELETE' }).catch(() => {});
+  }, [showToast]);
 
-  const handleTransferWallets = async (transferData) => {
-    try {
-      const res = await fetch('/api/wallets/transfer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(transferData)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast(`Đã chuyển ${formatVND(transferData.amount)} giữa các ví`);
-      }
-    } catch {
-      showToast('Đã thực hiện chuyển tiền nội bộ');
-    }
-  };
+  const handleTransferWallets = useCallback((transferData) => {
+    hasLocalEditsRef.current = true;
+    const amt = Number(transferData.amount) || 0;
+    setWallets((prev) =>
+      prev.map((w) => {
+        if (w.id === transferData.from_wallet_id) {
+          return { ...w, balance: (Number(w.balance) || 0) - amt };
+        }
+        if (w.id === transferData.to_wallet_id) {
+          return { ...w, balance: (Number(w.balance) || 0) + amt };
+        }
+        return w;
+      })
+    );
+    showToast(`Đã chuyển ${formatVND(amt)} giữa các ví`);
+    fetch('/api/wallets/transfer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transferData)
+    }).catch(() => {});
+  }, [showToast]);
 
-  const handleSaveBudget = async (category_id, customVal = null) => {
+  const handleSaveBudget = useCallback((category_id, customVal = null) => {
+    hasLocalEditsRef.current = true;
     const limit =
       customVal !== null
         ? Number(customVal)
         : evaluateAmountExpression(budgetInputVal);
     setEditingBudgetCatId(null);
-    try {
-      const res = await fetch('/api/budgets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category_id, monthly_limit: limit })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast(
-          limit > 0
-            ? `Đã đặt định mức ngân sách: ${formatVND(limit)}`
-            : 'Đã xóa định mức ngân sách'
-        );
+    setBudgets((prev) => {
+      const exists = prev.some((b) => b.category_id === category_id);
+      if (exists) {
+        return prev.map((b) => (b.category_id === category_id ? { ...b, monthly_limit: limit } : b));
       }
-    } catch {
-      setBudgets((prev) => {
-        const exists = prev.some((b) => b.category_id === category_id);
-        if (exists) {
-          return prev.map((b) => (b.category_id === category_id ? { ...b, monthly_limit: limit } : b));
-        }
-        return [...prev, { category_id, monthly_limit: limit }];
-      });
-    }
-  };
+      return [...prev, { category_id, monthly_limit: limit }];
+    });
+    showToast(
+      limit > 0
+        ? `Đã đặt định mức ngân sách: ${formatVND(limit)}`
+        : 'Đã xóa định mức ngân sách'
+    );
+    fetch('/api/budgets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category_id, monthly_limit: limit })
+    }).catch(() => {});
+  }, [budgetInputVal, showToast]);
 
-  const handleApplyBulkBudgets = async (budgetList) => {
-    try {
-      const res = await fetch('/api/budgets/bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ budgets: budgetList })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        confetti({ particleCount: 55, spread: 60, origin: { y: 0.7 } });
-        triggerMascotReaction(
-          'sparkle',
-          'Đã phân bổ ngân sách chi tiết cho toàn bộ các mục sinh hoạt trong tháng!'
-        );
-        showToast('🎯 Đã áp dụng bộ phân bổ ngân sách chi tiết cho toàn bộ các mục trong tháng!');
-        return;
-      }
-    } catch {
-      // fallback
-    }
+  const handleApplyBulkBudgets = useCallback((budgetList) => {
+    hasLocalEditsRef.current = true;
     setBudgets(budgetList);
-    showToast('🎯 Đã áp dụng bộ phân bổ ngân sách tháng!');
-  };
+    confetti({ particleCount: 45, spread: 55, origin: { y: 0.7 } });
+    triggerMascotReaction(
+      'sparkle',
+      'Đã phân bổ ngân sách chi tiết cho toàn bộ các mục sinh hoạt trong tháng!'
+    );
+    showToast('🎯 Đã áp dụng bộ phân bổ ngân sách chi tiết cho toàn bộ các mục trong tháng!');
+    fetch('/api/budgets/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ budgets: budgetList })
+    }).catch(() => {});
+  }, [triggerMascotReaction, showToast]);
 
-  const handleContributeGoal = async (goalId) => {
+  const handleContributeGoal = useCallback((goalId) => {
+    hasLocalEditsRef.current = true;
     const val = evaluateAmountExpression(contributeAmount);
     if (val <= 0) return;
     setContributeGoalId(null);
-    try {
-      const res = await fetch(`/api/goals/${goalId}/contribute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: val, wallet_id: contributeWalletId })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        confetti({ particleCount: 70, spread: 65, origin: { y: 0.65 } });
-        triggerMascotReaction(
-          'heart',
-          `Hoan hô! Bạn vừa tích lũy thêm ${formatVND(val)} vào hũ mục tiêu!`
-        );
-        showToast(`🎉 Đã tích lũy thêm ${formatVND(val)} vào hũ mục tiêu!`);
-      }
-    } catch {
-      showToast('Đã nạp vào hũ tiết kiệm');
-    }
-  };
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.id === goalId ? { ...g, current_amount: (Number(g.current_amount) || 0) + val } : g
+      )
+    );
+    confetti({ particleCount: 55, spread: 60, origin: { y: 0.65 } });
+    triggerMascotReaction(
+      'heart',
+      `Hoan hô! Bạn vừa tích lũy thêm ${formatVND(val)} vào hũ mục tiêu!`
+    );
+    showToast(`🎉 Đã tích lũy thêm ${formatVND(val)} vào hũ mục tiêu!`);
+    fetch(`/api/goals/${goalId}/contribute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: val, wallet_id: contributeWalletId })
+    }).catch(() => {});
+  }, [contributeAmount, contributeWalletId, triggerMascotReaction, showToast]);
 
-  const handleCreateGoal = async (e) => {
+  const handleCreateGoal = useCallback((e) => {
     e.preventDefault();
+    hasLocalEditsRef.current = true;
     if (!newGoalForm.name.trim()) return;
     const target = evaluateAmountExpression(newGoalForm.target_amount);
     if (target <= 0) {
@@ -570,6 +606,7 @@ export default function App() {
       return;
     }
     const payload = {
+      id: `goal_${Date.now()}`,
       name: newGoalForm.name.trim(),
       target_amount: target,
       current_amount: evaluateAmountExpression(newGoalForm.current_amount) || 0,
@@ -579,54 +616,50 @@ export default function App() {
       note: newGoalForm.note.trim()
     };
     setNewGoalOpen(false);
-    try {
-      const res = await fetch('/api/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+    setGoals((prev) => [...prev, payload]);
+    showToast(`Đã tạo hũ tiết kiệm: ${payload.name}`);
+    fetch('/api/goals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  }, [newGoalForm, showToast]);
+
+  const handleDeleteGoal = useCallback((goalId) => {
+    hasLocalEditsRef.current = true;
+    setGoals((prev) => prev.filter((g) => g.id !== goalId));
+    showToast('Đã xóa hũ mục tiêu');
+    fetch(`/api/goals/${goalId}`, { method: 'DELETE' }).catch(() => {});
+  }, [showToast]);
+
+  const handlePayRecurring = useCallback((billId) => {
+    hasLocalEditsRef.current = true;
+    const bill = recurring.find((r) => r.id === billId);
+    setRecurring((prev) =>
+      prev.map((r) => (r.id === billId ? { ...r, last_paid_month: '2026-11' } : r))
+    );
+    if (bill) {
+      handleSaveTransaction({
+        title: bill.title,
+        amount: Number(bill.amount) || 0,
+        type: 'expense',
+        category_id: bill.category_id || 'cat_housing',
+        wallet_id: bill.wallet_id || 'w_bank',
+        tx_date: '2026-11-05',
+        note: 'Thanh toán hóa đơn định kỳ hàng tháng',
+        tags: ['địnhkỳ']
       });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast(`Đã tạo hũ tiết kiệm: ${payload.name}`);
-      }
-    } catch {
-      // ignore
     }
-  };
+    fetch(`/api/recurring/${billId}/pay`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ month: '2026-11', tx_date: '2026-11-05' })
+    }).catch(() => {});
+  }, [recurring, handleSaveTransaction]);
 
-  const handleDeleteGoal = async (goalId) => {
-    try {
-      const res = await fetch(`/api/goals/${goalId}`, { method: 'DELETE' });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast('Đã xóa hũ mục tiêu');
-      }
-    } catch {
-      setGoals((prev) => prev.filter((g) => g.id !== goalId));
-    }
-  };
-
-  const handlePayRecurring = async (billId) => {
-    try {
-      const res = await fetch(`/api/recurring/${billId}/pay`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: '2026-11', tx_date: '2026-11-05' })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast('Đã thanh toán hóa đơn định kỳ & tự động ghi sổ giao dịch!');
-      }
-    } catch {
-      showToast('Đã ghi nhận thanh toán hóa đơn');
-    }
-  };
-
-  const handleCreateRecurring = async (e) => {
+  const handleCreateRecurring = useCallback((e) => {
     e.preventDefault();
+    hasLocalEditsRef.current = true;
     if (!newRecurringForm.title.trim()) return;
     const amt = evaluateAmountExpression(newRecurringForm.amount);
     if (amt <= 0) {
@@ -634,6 +667,7 @@ export default function App() {
       return;
     }
     const payload = {
+      id: `rec_${Date.now()}`,
       title: newRecurringForm.title.trim(),
       amount: amt,
       category_id: newRecurringForm.category_id || 'cat_housing',
@@ -642,47 +676,33 @@ export default function App() {
       last_paid_month: ''
     };
     setNewRecurringOpen(false);
-    try {
-      const res = await fetch('/api/recurring', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast(`Đã lưu hóa đơn định kỳ: ${payload.title}`);
-      }
-    } catch {
-      // ignore
-    }
-  };
+    setRecurring((prev) => [...prev, payload]);
+    showToast(`Đã lưu hóa đơn định kỳ: ${payload.title}`);
+    fetch('/api/recurring', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).catch(() => {});
+  }, [newRecurringForm, showToast]);
 
-  const handleDeleteRecurring = async (billId) => {
-    try {
-      const res = await fetch(`/api/recurring/${billId}`, { method: 'DELETE' });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast('Đã xóa khoản định kỳ');
-      }
-    } catch {
-      setRecurring((prev) => prev.filter((r) => r.id !== billId));
-    }
-  };
+  const handleDeleteRecurring = useCallback((billId) => {
+    hasLocalEditsRef.current = true;
+    setRecurring((prev) => prev.filter((r) => r.id !== billId));
+    showToast('Đã xóa khoản định kỳ');
+    fetch(`/api/recurring/${billId}`, { method: 'DELETE' }).catch(() => {});
+  }, [showToast]);
 
-  const handleResetClean = async () => {
-    try {
-      const res = await fetch('/api/reset-demo', { method: 'POST' });
-      if (res.ok) {
-        const data = await res.json();
-        applyServerState(data.state);
-        showToast('Đã làm mới toàn bộ dữ liệu về 0 ₫ (giữ nguyên danh mục & ví cơ bản)!');
-      }
-    } catch {
-      showToast('Đã làm mới dữ liệu về 0 ₫');
-    }
-  };
+  const handleResetClean = useCallback(() => {
+    hasLocalEditsRef.current = true;
+    setWallets(INITIAL_WALLETS);
+    setCategories(INITIAL_CATEGORIES);
+    setBudgets(INITIAL_BUDGETS);
+    setGoals(INITIAL_GOALS);
+    setRecurring(INITIAL_RECURRING);
+    setTransactions(INITIAL_TRANSACTIONS);
+    showToast('Đã làm mới toàn bộ dữ liệu về 0 ₫ (giữ nguyên danh mục & ví cơ bản)!');
+    fetch('/api/reset-demo', { method: 'POST' }).catch(() => {});
+  }, [showToast]);
 
   const handleExportCSV = () => {
     const headers = ['Ngày', 'Loại', 'Tiêu đề', 'Danh mục', 'Ví thanh toán', 'Số tiền (VND)', 'Ghi chú'];
@@ -1012,32 +1032,128 @@ export default function App() {
                 </div>
 
                 <div className="huashu-index-list">
-                  {wallets.map((w, idx) => (
-                    <button
-                      key={w.id}
-                      type="button"
-                      onClick={() => {
-                        setEditingWallet(w);
-                        setWalletModalMode('wallet');
-                        setWalletModalOpen(true);
-                      }}
-                      className="huashu-index-row"
-                    >
-                      <span>{String(idx + 1).padStart(2, '0')}</span>
-                      <div className="min-w-0">
-                        <b className="truncate">{w.name}</b>
-                        <small className="truncate">
-                          {w.balance === 0 ? 'Chạm để nhập số dư ban đầu' : w.account_number}
-                        </small>
+                  {wallets.map((w, idx) => {
+                    const isQuickEditing = quickBalanceWalletId === w.id;
+                    return (
+                      <div
+                        key={w.id}
+                        style={{ borderBottom: '1px solid var(--line)' }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isQuickEditing) {
+                              setQuickBalanceWalletId(null);
+                            } else {
+                              setQuickBalanceWalletId(w.id);
+                              setQuickBalanceInput(w.balance > 0 ? String(w.balance) : '');
+                            }
+                          }}
+                          className="huashu-index-row"
+                          style={{ borderBottom: 0 }}
+                        >
+                          <span>{String(idx + 1).padStart(2, '0')}</span>
+                          <div className="min-w-0">
+                            <b className="truncate">{w.name}</b>
+                            <small className="truncate">
+                              {w.balance === 0 ? 'Chạm để điền nhanh số dư' : w.account_number}
+                            </small>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <b className="font-mono-num">{formatVND(w.balance, hideBalance)}</b>
+                            <small style={{ color: 'var(--primary)' }}>
+                              {isQuickEditing
+                                ? 'Đóng ▲'
+                                : w.balance === 0
+                                ? '+ Điền nhanh'
+                                : 'Sửa nhanh'}
+                            </small>
+                          </div>
+                        </button>
+
+                        {/* Inline 1-Click Quick Balance Editor */}
+                        {isQuickEditing && (
+                          <div
+                            className="p-3 mb-3 space-y-2"
+                            style={{
+                              backgroundColor: 'var(--surface)',
+                              border: '1px solid var(--line)',
+                              borderRadius: 8
+                            }}
+                          >
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className="text-[11px] font-mono-num"
+                                style={{ color: 'var(--muted)' }}
+                              >
+                                1-Chạm chọn số dư:
+                              </span>
+                              {[
+                                { label: '500k', val: 500000 },
+                                { label: '2 triệu', val: 2000000 },
+                                { label: '5 triệu', val: 5000000 },
+                                { label: '10 triệu', val: 10000000 },
+                                { label: '20 triệu', val: 20000000 },
+                                { label: '50 triệu', val: 50000000 }
+                              ].map((chip) => (
+                                <button
+                                  key={chip.label}
+                                  type="button"
+                                  onClick={() => {
+                                    handleSaveWallet({ ...w, balance: chip.val });
+                                    setQuickBalanceWalletId(null);
+                                  }}
+                                  className="px-2 py-0.5 text-[11px] font-mono-num font-semibold cursor-pointer"
+                                  style={{
+                                    borderRadius: 5,
+                                    border: '1px solid var(--line)',
+                                    backgroundColor: 'var(--bg)',
+                                    color: 'var(--text)'
+                                  }}
+                                >
+                                  {chip.label}
+                                </button>
+                              ))}
+                            </div>
+
+                            <form
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const val = evaluateAmountExpression(quickBalanceInput);
+                                handleSaveWallet({ ...w, balance: val });
+                                setQuickBalanceWalletId(null);
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <input
+                                type="text"
+                                value={quickBalanceInput}
+                                onChange={(e) => setQuickBalanceInput(e.target.value)}
+                                placeholder="Hoặc gõ số dư (VD: 3.5tr, 800k)..."
+                                autoFocus
+                                className="flex-1 px-2.5 py-1.5 text-xs font-mono-num font-bold"
+                              />
+                              <button type="submit" className="btn small">
+                                Lưu ngay
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setQuickBalanceWalletId(null);
+                                  setEditingWallet(w);
+                                  setWalletModalMode('wallet');
+                                  setWalletModalOpen(true);
+                                }}
+                                className="btn secondary small"
+                              >
+                                Chi tiết
+                              </button>
+                            </form>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right shrink-0">
-                        <b className="font-mono-num">{formatVND(w.balance, hideBalance)}</b>
-                        <small style={{ color: 'var(--primary)' }}>
-                          {w.balance === 0 ? '+ Nhập số dư' : 'Cập nhật'}
-                        </small>
-                      </div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="huashu-exam-rail">
@@ -2454,7 +2570,7 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={fetchCloudState}
+                      onClick={() => fetchCloudState(true)}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 cursor-pointer"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />

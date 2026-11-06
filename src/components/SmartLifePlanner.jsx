@@ -175,7 +175,7 @@ const CATEGORY_ADVICE = {
     `Nên trích riêng ngay khi vừa nhận lương (Tương đương ${formatCompactVND(amt * 12)}/năm chưa tính lãi)`
 };
 
-export function SmartIncomeAllocator({
+export const SmartIncomeAllocator = React.memo(function SmartIncomeAllocator({
   categories,
   onApplyBudgets,
   onRecordIncome,
@@ -226,15 +226,15 @@ export function SmartIncomeAllocator({
     return { needs, wants, savings };
   }, [expenseCategories, finalAllocation]);
 
-  const handleApplyAll = async () => {
+  const handleApplyAll = () => {
     if (evaluatedIncome <= 0) return;
     const budgetList = Object.entries(finalAllocation).map(([category_id, monthly_limit]) => ({
       category_id,
       monthly_limit: Number(monthly_limit) || 0
     }));
-    await onApplyBudgets(budgetList);
+    onApplyBudgets(budgetList);
     if (alsoRecordIncome && onRecordIncome) {
-      await onRecordIncome(evaluatedIncome);
+      onRecordIncome(evaluatedIncome);
     }
     setAppliedSuccess(true);
     setTimeout(() => setAppliedSuccess(false), 3000);
@@ -488,20 +488,58 @@ export function SmartIncomeAllocator({
                     </span>
                   </div>
 
-                  {/* Editable Recommended Amount */}
-                  <div className="flex items-center justify-between gap-2 my-2">
-                    <input
-                      type="number"
-                      step="50000"
-                      value={amt}
-                      onChange={(e) =>
-                        setCustomOverrides((prev) => ({
-                          ...prev,
-                          [cat.id]: Math.max(0, Number(e.target.value) || 0)
-                        }))
-                      }
-                      className="w-36 px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono-num text-sm font-extrabold text-slate-900 dark:text-white"
-                    />
+                  {/* Editable Recommended Amount with 1-Click -100k / +100k Steppers */}
+                  <div className="flex items-center justify-between gap-1.5 my-2">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        type="button"
+                        title="Giảm 100.000 ₫"
+                        onClick={() =>
+                          setCustomOverrides((prev) => ({
+                            ...prev,
+                            [cat.id]: Math.max(0, amt - 100000)
+                          }))
+                        }
+                        className="w-7 h-7 flex items-center justify-center font-mono-num font-bold text-xs cursor-pointer"
+                        style={{
+                          borderRadius: 6,
+                          border: '1px solid var(--line)',
+                          backgroundColor: 'var(--surface)'
+                        }}
+                      >
+                        -
+                      </button>
+                      <input
+                        type="number"
+                        step="50000"
+                        value={amt}
+                        onChange={(e) =>
+                          setCustomOverrides((prev) => ({
+                            ...prev,
+                            [cat.id]: Math.max(0, Number(e.target.value) || 0)
+                          }))
+                        }
+                        className="w-28 px-2 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono-num text-sm font-extrabold text-slate-900 dark:text-white text-center"
+                      />
+                      <button
+                        type="button"
+                        title="Tăng 100.000 ₫"
+                        onClick={() =>
+                          setCustomOverrides((prev) => ({
+                            ...prev,
+                            [cat.id]: amt + 100000
+                          }))
+                        }
+                        className="w-7 h-7 flex items-center justify-center font-mono-num font-bold text-xs cursor-pointer"
+                        style={{
+                          borderRadius: 6,
+                          border: '1px solid var(--line)',
+                          backgroundColor: 'var(--surface)'
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
                     <span className="text-[11px] font-mono-num font-semibold text-slate-500">
                       ~{formatCompactVND(dailyAmt, hideBalance)}/ngày
                     </span>
@@ -560,7 +598,7 @@ export function SmartIncomeAllocator({
       </div>
     </div>
   );
-}
+});
 
 /**
  * MODULE 2: Month-over-Month Financial Comparison

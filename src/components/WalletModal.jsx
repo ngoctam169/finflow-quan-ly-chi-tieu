@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, ArrowLeftRight, Wallet, Check, Trash2 } from 'lucide-react';
 import { evaluateAmountExpression, formatVND } from '../utils/smartParser.js';
 
-export function WalletModal({
+export const WalletModal = React.memo(function WalletModal({
   isOpen,
   onClose,
   wallets,
@@ -49,7 +49,7 @@ export function WalletModal({
 
   if (!isOpen) return null;
 
-  const handleTransferSubmit = async (e) => {
+  const handleTransferSubmit = (e) => {
     e.preventDefault();
     const val = evaluateAmountExpression(transferAmount);
     if (fromWalletId === toWalletId) {
@@ -60,16 +60,16 @@ export function WalletModal({
       setError('Vui lòng nhập số tiền chuyển lớn hơn 0 ₫');
       return;
     }
-    await onTransfer({
+    onClose();
+    onTransfer({
       from_wallet_id: fromWalletId,
       to_wallet_id: toWalletId,
       amount: val,
       note: transferNote.trim() || 'Chuyển tiền nội bộ giữa các ví'
     });
-    onClose();
   };
 
-  const handleWalletSubmit = async (e) => {
+  const handleWalletSubmit = (e) => {
     e.preventDefault();
     if (!walletName.trim()) {
       setError('Vui lòng nhập tên ví / tài khoản');
@@ -82,7 +82,8 @@ export function WalletModal({
       cash: 'Wallet',
       saving: 'PiggyBank'
     };
-    await onSaveWallet({
+    onClose();
+    onSaveWallet({
       id: editingWallet?.id,
       name: walletName.trim(),
       type: walletType,
@@ -91,11 +92,10 @@ export function WalletModal({
       icon: iconMap[walletType] || 'Wallet',
       account_number: walletAccount.trim()
     });
-    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45">
       <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <h3 className="text-base font-extrabold text-slate-900 dark:text-white">
@@ -373,4 +373,4 @@ export function WalletModal({
       </div>
     </div>
   );
-}
+});

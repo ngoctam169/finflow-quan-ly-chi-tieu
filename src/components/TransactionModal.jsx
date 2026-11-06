@@ -13,7 +13,7 @@ const QUICK_AMOUNTS = [
   { label: '5 triệu', value: 5000000 }
 ];
 
-export function TransactionModal({
+export const TransactionModal = React.memo(function TransactionModal({
   isOpen,
   onClose,
   initialData,
@@ -83,7 +83,7 @@ export function TransactionModal({
     setNewCatOpen(false);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (evaluatedAmount <= 0) {
       setError('Vui lòng nhập số tiền hợp lệ lớn hơn 0 ₫');
@@ -96,7 +96,8 @@ export function TransactionModal({
       .map((s) => s.trim().replace(/^#/, ''))
       .filter(Boolean);
 
-    await onSave({
+    onClose();
+    onSave({
       id: initialData?.id,
       title: finalTitle,
       amount: evaluatedAmount,
@@ -107,11 +108,10 @@ export function TransactionModal({
       note: note.trim(),
       tags
     });
-    onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45">
       <div className="w-full max-w-xl rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -438,4 +438,4 @@ export function TransactionModal({
       </div>
     </div>
   );
-}
+});

@@ -1,30 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { formatVND, formatCompactVND } from '../utils/smartParser.js';
 import { DynamicIcon } from './IconMap.jsx';
-import { Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
-export function CashflowBarChart({ transactions, selectedMonth, hideBalance, darkMode }) {
+export const CashflowBarChart = React.memo(function CashflowBarChart({
+  transactions,
+  selectedMonth,
+  hideBalance
+}) {
   const [hoveredIdx, setHoveredIdx] = useState(null);
 
-  // Group by date for the selected month (or last 14 active days)
-  const dayMap = new Map();
-  const filtered = transactions.filter((t) =>
-    selectedMonth === 'ALL' ? true : String(t.tx_date).startsWith(selectedMonth)
-  );
-
-  for (const tx of filtered) {
-    const d = tx.tx_date;
-    if (!dayMap.has(d)) {
-      dayMap.set(d, { date: d, income: 0, expense: 0 });
+  const days = useMemo(() => {
+    const dayMap = new Map();
+    const filtered = transactions.filter((t) =>
+      selectedMonth === 'ALL' ? true : String(t.tx_date).startsWith(selectedMonth)
+    );
+    for (const tx of filtered) {
+      const d = tx.tx_date;
+      if (!dayMap.has(d)) {
+        dayMap.set(d, { date: d, income: 0, expense: 0 });
+      }
+      const entry = dayMap.get(d);
+      if (tx.type === 'income') entry.income += Number(tx.amount) || 0;
+      else entry.expense += Number(tx.amount) || 0;
     }
-    const entry = dayMap.get(d);
-    if (tx.type === 'income') entry.income += Number(tx.amount) || 0;
-    else entry.expense += Number(tx.amount) || 0;
-  }
-
-  const days = Array.from(dayMap.values())
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(-12);
+    return Array.from(dayMap.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(-12);
+  }, [transactions, selectedMonth]);
 
   if (days.length === 0) {
     return (
@@ -126,9 +129,9 @@ export function CashflowBarChart({ transactions, selectedMonth, hideBalance, dar
       </div>
     </div>
   );
-}
+});
 
-export function CategoryDonutChart({
+export const CategoryDonutChart = React.memo(function CategoryDonutChart({
   transactions,
   categories,
   selectedMonth,
@@ -137,31 +140,30 @@ export function CategoryDonutChart({
 }) {
   const [activeCatId, setActiveCatId] = useState(null);
 
-  const expenses = transactions.filter(
-    (t) =>
-      t.type === 'expense' &&
-      (selectedMonth === 'ALL' ? true : String(t.tx_date).startsWith(selectedMonth))
-  );
-
-  const totalExpense = expenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
-
-  const catTotals = new Map();
-  for (const tx of expenses) {
-    catTotals.set(tx.category_id, (catTotals.get(tx.category_id) || 0) + (Number(tx.amount) || 0));
-  }
-
-  const items = Array.from(catTotals.entries())
-    .map(([catId, amount]) => {
-      const cat = categories.find((c) => c.id === catId) || {
-        id: catId,
-        name: 'Khác',
-        color: '#64748b',
-        icon: 'Tag'
-      };
-      const pct = totalExpense > 0 ? (amount / totalExpense) * 100 : 0;
-      return { ...cat, amount, pct };
-    })
-    .sort((a, b) => b.amount - a.amount);
+  const items = useMemo(() => {
+    const expenses = transactions.filter(
+      (t) =>
+        t.type === 'expense' &&
+        (selectedMonth === 'ALL' ? true : String(t.tx_date).startsWith(selectedMonth))
+    );
+    const totalExpense = expenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const catTotals = new Map();
+    for (const tx of expenses) {
+      catTotals.set(tx.category_id, (catTotals.get(tx.category_id) || 0) + (Number(tx.amount) || 0));
+    }
+    return Array.from(catTotals.entries())
+      .map(([catId, amount]) => {
+        const cat = categories.find((c) => c.id === catId) || {
+          id: catId,
+          name: 'Khác',
+          color: '#64748b',
+          icon: 'Tag'
+        };
+        const pct = totalExpense > 0 ? (amount / totalExpense) * 100 : 0;
+        return { ...cat, amount, pct };
+      })
+      .sort((a, b) => b.amount - a.amount);
+  }, [transactions, categories, selectedMonth]);
 
   if (items.length === 0) {
     return (
@@ -279,9 +281,14 @@ export function CategoryDonutChart({
       </div>
     </div>
   );
-}
+});
 
-export function Rule503020Card({ transactions, categories, selectedMonth, hideBalance }) {
+export const Rule503020Card = React.memo(function Rule503020Card({
+  transactions,
+  categories,
+  selectedMonth,
+  hideBalance
+}) {
   const monthTx = transactions.filter((t) =>
     selectedMonth === 'ALL' ? true : String(t.tx_date).startsWith(selectedMonth)
   );
@@ -418,4 +425,4 @@ export function Rule503020Card({ transactions, categories, selectedMonth, hideBa
       </div>
     </div>
   );
-}
+});

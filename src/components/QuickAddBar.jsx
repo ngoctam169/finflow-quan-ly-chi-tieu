@@ -1,9 +1,25 @@
-import React, { useState, useRef } from 'react';
-import { Plus, Check, SlidersHorizontal, ArrowRight } from 'lucide-react';
-import { parseNaturalTransaction, formatVND, formatDateVN } from '../utils/smartParser.js';
+import React, { useState, useRef, useMemo } from 'react';
+import { Plus, Check, SlidersHorizontal, ArrowRight, Zap } from 'lucide-react';
+import {
+  parseNaturalTransaction,
+  formatVND,
+  formatCompactVND,
+  formatDateVN
+} from '../utils/smartParser.js';
 import { DynamicIcon } from './IconMap.jsx';
 
-export function QuickAddBar({
+const QUICK_AMOUNT_PRESETS_BY_CAT = {
+  cat_food: [35000, 45000, 60000, 120000],
+  cat_grocery: [100000, 200000, 350000, 500000],
+  cat_coffee: [25000, 35000, 50000, 65000],
+  cat_transport: [50000, 70000, 100000, 200000],
+  cat_housing: [300000, 500000, 3500000, 4500000],
+  cat_shopping: [150000, 300000, 500000, 1000000],
+  cat_health: [100000, 250000, 500000, 1000000],
+  cat_salary: [10000000, 15000000, 20000000, 25000000]
+};
+
+export const QuickAddBar = React.memo(function QuickAddBar({
   categories,
   wallets,
   quickTemplates = [],
@@ -15,13 +31,22 @@ export function QuickAddBar({
   const [justAdded, setJustAdded] = useState(null);
   const inputRef = useRef(null);
 
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = '2026-11-05';
 
-  const parsed = text.trim()
-    ? parseNaturalTransaction(text, categories, wallets, todayStr)
-    : null;
+  const parsed = useMemo(
+    () => (text.trim() ? parseNaturalTransaction(text, categories, wallets, todayStr) : null),
+    [text, categories, wallets, todayStr]
+  );
 
-  const handleSubmit = async (e) => {
+  const commitTransaction = (txPayload) => {
+    setJustAdded(`${txPayload.title} (${formatCompactVND(txPayload.amount)})`);
+    setText('');
+    setActiveHint('');
+    onQuickSubmit(txPayload);
+    setTimeout(() => setJustAdded(null), 2600);
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!parsed || !parsed.isValid) {
       onOpenFullModal({
@@ -33,7 +58,7 @@ export function QuickAddBar({
       return;
     }
 
-    await onQuickSubmit({
+    commitTransaction({
       title: parsed.title,
       amount: parsed.amount,
       type: parsed.type,
@@ -43,27 +68,40 @@ export function QuickAddBar({
       note: '',
       tags: []
     });
+  };
 
-    setJustAdded(parsed.title);
-    setText('');
-    setActiveHint('');
-    setTimeout(() => setJustAdded(null), 2400);
+  const handleInstantPresetSave = (presetAmount) => {
+    if (!parsed) return;
+    commitTransaction({
+      title: parsed.title || parsed.category?.name || 'Giao dịch nhanh',
+      amount: presetAmount,
+      type: parsed.type,
+      category_id: parsed.category_id,
+      wallet_id: parsed.wallet_id,
+      tx_date: parsed.tx_date,
+      note: '',
+      tags: []
+    });
   };
 
   const handleSuggestionClick = (tpl) => {
     const draft = tpl.draftText || `${tpl.label.replace(/^[^\s]+\s/, '')} `;
     setText(draft);
     setActiveHint(
-      tpl.placeholderHint || 'Gõ tiếp số tiền thực tế của bạn (VD: 45k, 150k) rồi nhấn Enter'
+      tpl.placeholderHint || 'Chạm mức tiền bên dưới để lưu ngay hoặc tự gõ số tiền rồi nhấn Enter'
     );
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       if (inputRef.current) {
         inputRef.current.focus();
         const len = draft.length;
         inputRef.current.setSelectionRange(len, len);
       }
-    }, 10);
+    });
   };
+
+  const suggestedAmounts = parsed
+    ? QUICK_AMOUNT_PRESETS_BY_CAT[parsed.category_id] || [35000, 50000, 100000, 200000]
+    : [];
 
   return (
     <div className="panel" style={{ padding: '20px 22px' }}>
@@ -151,9 +189,31 @@ export function QuickAddBar({
                   {formatVND(parsed.amount)} (Nhấn Enter)
                 </span>
               ) : (
-                <span className="font-semibold" style={{ color: 'var(--primary-dark)' }}>
-                  {activeHint || 'Gõ thêm số tiền thực tế của bạn (VD: 45k, 200k, 1.5tr)'}
-                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span
+                    className="inline-flex items-center gap-1 font-semibold mr-1"
+                    style={{ color: 'var(--primary-dark)' }}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    1-Chạm lưu ngay:
+                  </span>
+                  {suggestedAmounts.map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => handleInstantPresetSave(amt)}
+                      className="px-2.5 py-1 font-mono-num font-bold text-xs cursor-pointer transition"
+                      style={{
+                        borderRadius: 6,
+                        backgroundColor: 'var(--primary)',
+                        color: '#fff',
+                        border: '1px solid var(--primary)'
+                      }}
+                    >
+                      +{formatCompactVND(amt)}
+                    </button>
+                  ))}
+                </div>
               )}
             </div>
           </div>
@@ -165,7 +225,7 @@ export function QuickAddBar({
           className="font-mono-num text-[11px] shrink-0 mr-1"
           style={{ color: 'var(--muted)' }}
         >
-          GỢI Ý:
+          CHỌN NHANH MỤC:
         </span>
         {quickTemplates.map((tpl, idx) => {
           const cleanLabel = tpl.label.replace(/^[^\p{L}\p{N}]+\s*/u, '');
@@ -198,4 +258,4 @@ export function QuickAddBar({
       </div>
     </div>
   );
-}
+});

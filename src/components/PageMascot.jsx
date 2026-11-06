@@ -162,7 +162,7 @@ function spritePos(index) {
 /**
  * Core `<Mascot />` component from `nilbuild/page-mascot`
  */
-export function Mascot({
+export const Mascot = React.memo(function Mascot({
   directions = '/mascots/fox-directions.webp',
   reactions = '/mascots/fox-reactions.webp',
   size = 96,
@@ -171,6 +171,8 @@ export function Mascot({
   className = ''
 }) {
   const containerRef = useRef(null);
+  const centerRef = useRef({ x: 0, y: 0, valid: false });
+  const lastDirectionRef = useRef(4);
   const [directionIndex, setDirectionIndex] = useState(4); // Center
   const [activeReaction, setActiveReaction] = useState(null);
   const [boopTransform, setBoopTransform] = useState('scale(1)');
@@ -212,32 +214,52 @@ export function Mascot({
   // Cursor tracking across 9 directions
   useEffect(() => {
     let rafId = 0;
+
+    const updateCachedCenter = () => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      centerRef.current = {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2,
+        valid: true
+      };
+    };
+
+    updateCachedCenter();
+
     const onMouseMove = (e) => {
-      cancelAnimationFrame(rafId);
+      if (rafId) return;
       rafId = requestAnimationFrame(() => {
-        const el = containerRef.current;
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const dx = e.clientX - cx;
-        const dy = e.clientY - cy;
+        rafId = 0;
+        if (!centerRef.current.valid) updateCachedCenter();
+        const dx = e.clientX - centerRef.current.x;
+        const dy = e.clientY - centerRef.current.y;
         const dist = Math.hypot(dx, dy);
 
+        let nextDir = 4;
         if (dist < size * 0.6) {
-          setDirectionIndex(4);
-          return;
+          nextDir = 4;
+        } else {
+          const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
+          const sector = Math.round(angle / 45) % 8;
+          nextDir = ANGLE_TO_INDEX[sector];
         }
 
-        const angle = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360;
-        const sector = Math.round(angle / 45) % 8;
-        setDirectionIndex(ANGLE_TO_INDEX[sector]);
+        if (nextDir !== lastDirectionRef.current) {
+          lastDirectionRef.current = nextDir;
+          setDirectionIndex(nextDir);
+        }
       });
     };
 
     window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('scroll', updateCachedCenter, { passive: true });
+    window.addEventListener('resize', updateCachedCenter, { passive: true });
     return () => {
       window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('scroll', updateCachedCenter);
+      window.removeEventListener('resize', updateCachedCenter);
       cancelAnimationFrame(rafId);
     };
   }, [size]);
@@ -369,7 +391,7 @@ export function Mascot({
       )}
     </div>
   );
-}
+});
 
 /**
  * Floating & Sidebar Interactive Financial Mascot Widget (`nilbuild/page-mascot` integration)
