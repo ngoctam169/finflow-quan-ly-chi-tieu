@@ -87,9 +87,24 @@ export default function App() {
   const [hideBalance, setHideBalance] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
+  const [themeMode, setThemeMode] = useState(() => {
+    try {
+      return localStorage.getItem('finflow_theme_mode') || 'paper';
+    } catch {
+      return 'paper';
+    }
+  });
+  const [showMascot, setShowMascot] = useState(() => {
+    try {
+      return localStorage.getItem('finflow_show_mascot') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  const [mascotIdx, setMascotIdx] = useState(0);
 
   // Locked Single Mascot ('fox-riso' - Cáo Riso Tài Chính matching Terracotta Warm Paper theme)
-  const mascotData = MASCOT_CATALOG[0];
+  const mascotData = MASCOT_CATALOG[mascotIdx % MASCOT_CATALOG.length] || MASCOT_CATALOG[0];
   const [mascotReaction, setMascotReaction] = useState(null);
   const [mascotSpeech, setMascotSpeech] = useState('');
   const hasLocalEditsRef = useRef(false);
@@ -196,8 +211,28 @@ export default function App() {
   }, [toast]);
 
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
-  }, []);
+    document.documentElement.setAttribute('data-theme', themeMode);
+    document.documentElement.classList.toggle('dark', themeMode === 'pro-dark');
+    try {
+      localStorage.setItem('finflow_theme_mode', themeMode);
+    } catch {
+      // ignore
+    }
+  }, [themeMode]);
+
+  const cycleThemeMode = useCallback(() => {
+    setThemeMode((prev) => {
+      const next = prev === 'paper' ? 'pro-light' : prev === 'pro-light' ? 'pro-dark' : 'paper';
+      const label =
+        next === 'paper'
+          ? '📜 Giao diện Giấy Ấm Huashu'
+          : next === 'pro-light'
+          ? '☀️ Giao diện FinFlow Pro Sáng'
+          : '🌙 Giao diện FinFlow Pro Tối';
+      showToast(`Đã chuyển sang ${label}`);
+      return next;
+    });
+  }, [showToast]);
 
   // Global Keyboard Shortcuts (N = New Transaction, H = Hide/Show Balance)
   useEffect(() => {
@@ -841,6 +876,35 @@ export default function App() {
                     className="popover-link"
                     onClick={() => {
                       setUtilityMenuOpen(false);
+                      setMascotIdx((prev) => (prev + 1) % MASCOT_CATALOG.length);
+                      setShowMascot(true);
+                    }}
+                  >
+                    <strong>Đổi linh vật đồng hành ({mascotData.name})</strong>
+                    <small>Chuyển đổi qua lại giữa 8 linh vật tương tác 3x3</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
+                      setShowMascot((prev) => {
+                        const next = !prev;
+                        try {
+                          localStorage.setItem('finflow_show_mascot', String(next));
+                        } catch {}
+                        return next;
+                      });
+                    }}
+                  >
+                    <strong>{showMascot ? 'Ẩn linh vật góc màn hình' : 'Hiện linh vật góc màn hình'}</strong>
+                    <small>Bật hoặc tắt linh vật theo dõi con trỏ chuột</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
                       handleResetClean();
                     }}
                   >
@@ -876,6 +940,19 @@ export default function App() {
                 </option>
               ))}
             </select>
+
+            <button
+              type="button"
+              onClick={cycleThemeMode}
+              title="Đổi chế độ giao diện (Giấy Ấm / Sáng Pro / Tối Pro)"
+              aria-label="Đổi chế độ giao diện"
+              className="icon-btn"
+              style={{ width: 'auto', padding: '0 10px', fontSize: '12px', fontWeight: 700, gap: '4px' }}
+            >
+              <span>
+                {themeMode === 'paper' ? '📜 Giấy Ấm' : themeMode === 'pro-light' ? '☀️ Sáng Pro' : '🌙 Tối Pro'}
+              </span>
+            </button>
 
             <button
               type="button"
@@ -1013,22 +1090,25 @@ export default function App() {
                       {mascotSpeech || 'Chạm vào từng ví bên dưới để nhập số dư thực tế của bạn'}
                     </small>
                   </div>
-                  <div
-                    className="p-1.5 shrink-0"
-                    title="Cáo Riso Tài Chính — Di chuột để tương tác"
-                    style={{
-                      backgroundColor: 'var(--surface)',
-                      border: '1px solid var(--line)',
-                      borderRadius: '8px'
-                    }}
-                  >
-                    <Mascot
-                      directions={mascotData.directions}
-                      reactions={mascotData.reactions}
-                      size={52}
-                      externalReaction={mascotReaction}
-                    />
-                  </div>
+                  {showMascot && (
+                    <div
+                      className="p-1.5 shrink-0 cursor-pointer"
+                      onClick={() => setMascotIdx((prev) => (prev + 1) % MASCOT_CATALOG.length)}
+                      title={`${mascotData.name} — Bấm để đổi linh vật`}
+                      style={{
+                        backgroundColor: 'var(--surface)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '8px'
+                      }}
+                    >
+                      <Mascot
+                        directions={mascotData.directions}
+                        reactions={mascotData.reactions}
+                        size={52}
+                        externalReaction={mascotReaction}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="huashu-index-list">

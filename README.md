@@ -2,6 +2,8 @@
 
 **FinFlow VN** là ứng dụng web quản lý tài chính cá nhân hiện đại, tập trung tối đa vào **sự tiện dụng (UX/UI)**, tốc độ thao tác dưới 3 giây và khả năng phân tích dòng tiền chuyên sâu.
 
+- 🌐 **Bản Triển Khai Chính Thức (Vercel Production):** [https://finflow-pro-nt.vercel.app](https://finflow-pro-nt.vercel.app)
+
 ## ✨ Tính Năng Nổi Bật
 
 1. **⚡ Ghi Nhanh Thông Minh 3 Giây (Natural Language Quick-Add)**:
@@ -22,6 +24,8 @@
    - Quản lý lịch thanh toán hóa đơn cố định hàng tháng (Tiền nhà, Điện nước, Internet, Gym...) với nút thanh toán 1 chạm.
 6. **🔒 Chế Độ Riêng Tư (Privacy Mode) & Giao Diện Sáng/Tối**:
    - Phím tắt `H` để ẩn toàn bộ số dư (`•••••••• ₫`) khi mở ứng dụng ở nơi công cộng, phím tắt `N` để mở nhanh khung ghi giao dịch.
+   - Chuyển đổi tức thì 3 chế độ giao diện ngay trên thanh điều hướng: **Giấy Ấm Huashu (`📜 Giấy Ấm`)**, **Sáng Hiện Đại (`☀️ Sáng Pro`)** và **Tối Chuyên Nghiệp (`🌙 Tối Pro`)**, kèm linh vật đồng hành tương tác có thể bật/tắt hoặc đổi nhân vật 1 chạm.
+   - Khởi tạo hoàn toàn sạch **0 giao dịch mẫu (`INITIAL_TRANSACTIONS = []`)** và **4 ví số dư 0 ₫** để người dùng nhập trực tiếp số liệu thực tế.
 
 ## 🛠️ Công Nghệ Sử Dụng
 - **Frontend**: React 19 + Vite + Tailwind CSS v4 + Lucide Icons + Canvas Confetti
