@@ -392,46 +392,61 @@ export function PageMascotCompanion({
     (totalMonthlyBudget > 0 && monthExpense > totalMonthlyBudget
       ? 'Cảnh báo: Chi tiêu tháng này đã vượt ngân sách dự kiến!'
       : totalNetWorth === 0 && monthExpense === 0
-      ? 'Chào bạn! Hãy nhập thu nhập hoặc chạm vào mình để khám phá nhé!'
+      ? 'Chạm vào mình để tương tác hoặc nhập thu nhập để bắt đầu sổ cái.'
       : currentMascot.persona);
 
   return (
-    <div className="fixed bottom-16 lg:bottom-5 left-4 sm:left-6 z-40 flex flex-col items-start">
+    <div className="fixed bottom-14 lg:bottom-5 left-4 sm:left-6 z-40 flex flex-col items-start">
       {/* Expanded Mascot Picker & Expression Studio Drawer */}
       {isOpen && (
-        <div className="mb-3 w-80 sm:w-96 rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-700/80 shadow-2xl p-4 space-y-4 animate-in fade-in slide-in-from-bottom-2">
-          <div className="flex items-center justify-between border-b border-slate-200/70 dark:border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <div>
-                <h4 className="text-xs font-extrabold text-slate-900 dark:text-white uppercase tracking-wider">
-                  Page Mascot Companion
-                </h4>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                  Linh vật tương tác dõi theo chuột (nilbuild/page-mascot)
-                </p>
-              </div>
+        <div
+          className="mb-2.5 w-80 sm:w-96 p-4 space-y-3.5"
+          style={{
+            backgroundColor: 'var(--surface)',
+            color: 'var(--ink)',
+            border: '2px solid var(--rule-strong)',
+            boxShadow: '6px 6px 0 var(--rule-strong)'
+          }}
+        >
+          <div
+            className="flex items-center justify-between pb-2.5"
+            style={{ borderBottom: '2px solid var(--rule-strong)' }}
+          >
+            <div>
+              <span
+                className="font-mono-num text-[10px] font-bold block"
+                style={{ color: 'var(--accent)', letterSpacing: '0.08em' }}
+              >
+                NILBUILD / PAGE-MASCOT
+              </span>
+              <h4 className="text-xs font-extrabold">
+                Linh Vật Dõi Theo Chuột 9 Hướng
+              </h4>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+              className="px-2.5 py-1 text-[11px] font-bold cursor-pointer"
+              style={{ border: '1px solid var(--rule-strong)' }}
             >
-              Thu gọn
+              Đóng
             </button>
           </div>
 
           {/* Character Grid (10 Mascots) */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">
-                Chọn linh vật đồng hành ({MASCOT_CATALOG.length} nhân vật):
+              <span className="font-mono-num text-[11px] font-bold" style={{ color: 'var(--mute)' }}>
+                CHỌN NHÂN VẬT ({MASCOT_CATALOG.length})
               </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <span
+                className="font-mono-num text-[10px] font-bold px-1.5 py-0.5"
+                style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
+              >
                 {currentMascot.styleTag}
               </span>
             </div>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1.5">
               {MASCOT_CATALOG.map((item) => {
                 const selected = item.id === currentMascot.id;
                 return (
@@ -443,21 +458,21 @@ export function PageMascotCompanion({
                       setLocalSpeech(`Xin chào! Mình là ${item.name} — ${item.persona}`);
                       if (onTriggerReaction) onTriggerReaction('sparkle');
                     }}
-                    className={`group flex flex-col items-center p-1.5 rounded-2xl border transition cursor-pointer ${
-                      selected
-                        ? 'border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/60 ring-2 ring-emerald-500/25'
-                        : 'border-slate-200/70 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40'
-                    }`}
+                    className="flex flex-col items-center p-1.5 transition cursor-pointer"
+                    style={{
+                      border: selected ? '2px solid var(--accent)' : '1px solid var(--rule)',
+                      backgroundColor: selected ? 'var(--surface-alt)' : 'var(--bg)'
+                    }}
                   >
                     <div
-                      className="w-11 h-11 rounded-xl"
+                      className="w-10 h-10"
                       style={{
                         backgroundImage: `url(${item.directions})`,
                         backgroundRepeat: 'no-repeat',
                         ...spritePos(4)
                       }}
                     />
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 truncate w-full text-center mt-1">
+                    <span className="text-[10px] font-bold truncate w-full text-center mt-1">
                       {item.name.replace(/^(Cáo|Mèo|Gấu|Rái|Cú|Thỏ|Ếch)\s+/, '$1 ')}
                     </span>
                   </button>
@@ -468,8 +483,11 @@ export function PageMascotCompanion({
 
           {/* Instant Expression Triggers (9 Sprite Reactions) */}
           <div>
-            <span className="block text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
-              Thử biểu cảm trực tiếp (9 trạng thái Reactions Sprite):
+            <span
+              className="block font-mono-num text-[11px] font-bold mb-1.5"
+              style={{ color: 'var(--mute)' }}
+            >
+              BIỂU CẢM TRỰC TIẾP (9 SPRITES)
             </span>
             <div className="flex flex-wrap gap-1.5">
               {REACTION_METADATA.map((react) => (
@@ -480,9 +498,14 @@ export function PageMascotCompanion({
                     if (onTriggerReaction) onTriggerReaction(react.id);
                     handleBoop(react.id);
                   }}
-                  className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/60 border border-slate-200/70 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 transition cursor-pointer"
+                  className="px-2 py-1 text-[11px] font-bold transition cursor-pointer"
+                  style={{
+                    border: '1px solid var(--rule-strong)',
+                    backgroundColor: 'var(--bg)',
+                    color: 'var(--ink)'
+                  }}
                 >
-                  {react.emoji} {react.label}
+                  {react.label}
                 </button>
               ))}
             </div>
@@ -490,43 +513,55 @@ export function PageMascotCompanion({
         </div>
       )}
 
-      {/* Mascot Dock Bar with Live Cursor-Tracking Character & Speech Bubble */}
-      <div className="flex items-end gap-2.5">
-        <div className="relative group rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/90 dark:border-slate-700/80 shadow-xl p-1.5 flex items-center gap-2">
-          <div className="relative rounded-2xl bg-slate-100/80 dark:bg-slate-800/70 p-1">
-            <Mascot
-              directions={currentMascot.directions}
-              reactions={currentMascot.reactions}
-              size={68}
-              externalReaction={externalReaction}
-              onBoop={handleBoop}
-            />
-            <span
-              className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold text-white shadow"
-              style={{ backgroundColor: currentMascot.accent }}
-            >
-              3×3
-            </span>
-          </div>
+      {/* Editorial Print Mascot Stamp Card */}
+      <div
+        className="p-2 flex items-center gap-2.5"
+        style={{
+          backgroundColor: 'var(--surface)',
+          color: 'var(--ink)',
+          border: '2px solid var(--rule-strong)',
+          boxShadow: '4px 4px 0 var(--rule-strong)'
+        }}
+      >
+        <div
+          className="relative p-0.5 shrink-0"
+          style={{
+            backgroundColor: 'var(--bg)',
+            border: '1px solid var(--rule-strong)'
+          }}
+        >
+          <Mascot
+            directions={currentMascot.directions}
+            reactions={currentMascot.reactions}
+            size={58}
+            externalReaction={externalReaction}
+            onBoop={handleBoop}
+          />
+        </div>
 
-          <div className="pr-2 max-w-[200px] sm:max-w-[240px]">
-            <div className="flex items-center justify-between gap-2 mb-0.5">
-              <span className="text-xs font-extrabold text-slate-900 dark:text-white truncate">
-                {currentMascot.name}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsOpen((prev) => !prev)}
-                className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold hover:bg-emerald-100 transition cursor-pointer shrink-0"
-              >
-                <span>Đổi linh vật</span>
-                {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
-              </button>
-            </div>
-            <p className="text-[11px] leading-snug text-slate-600 dark:text-slate-300 line-clamp-2">
-              {statusTip}
-            </p>
+        <div className="pr-1 max-w-[190px] sm:max-w-[230px]">
+          <div className="flex items-center justify-between gap-2 mb-0.5">
+            <span className="text-xs font-extrabold truncate">
+              {currentMascot.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => setIsOpen((prev) => !prev)}
+              className="px-1.5 py-0.5 text-[10px] font-mono-num font-bold cursor-pointer shrink-0"
+              style={{
+                backgroundColor: 'var(--accent)',
+                color: 'var(--accent-fg)'
+              }}
+            >
+              {isOpen ? 'THU GỌN' : 'ĐỔI LINH VẬT'}
+            </button>
           </div>
+          <p
+            className="text-[11px] leading-snug line-clamp-2"
+            style={{ color: 'var(--mute)' }}
+          >
+            {statusTip}
+          </p>
         </div>
       </div>
     </div>

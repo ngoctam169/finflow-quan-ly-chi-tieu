@@ -64,29 +64,29 @@ import {
   MonthComparisonModule,
   LifeOptimizationToolkit
 } from './components/SmartLifePlanner.jsx';
-import { PageMascotCompanion } from './components/PageMascot.jsx';
+import { Mascot, MASCOT_CATALOG, PageMascotCompanion } from './components/PageMascot.jsx';
 import {
   HUASHU_DIRECTIONS,
-  HuashuStyleBanner,
+  HuashuTweaksPanel,
   HuashuStudioModal
 } from './components/HuashuStyleStudio.jsx';
 
 const STORAGE_KEY = 'finflow_vn_state_v2_clean';
-const HUASHU_STORAGE_KEY = 'finflow_huashu_design_v3';
+const HUASHU_STORAGE_KEY = 'finflow_huashu_design_v4';
 
 const NAV_TABS = [
-  { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'transactions', label: 'Sổ giao dịch', icon: ReceiptText },
-  { id: 'budgets', label: 'Phân bổ & Ngân sách', icon: PieChart },
-  { id: 'goals', label: 'Tích lũy & Định kỳ', icon: PiggyBank },
-  { id: 'analytics', label: 'So sánh & Tối ưu sống', icon: BarChart3 }
+  { id: 'dashboard', code: '01', label: 'TỔNG QUAN SỔ CÁI', icon: LayoutDashboard },
+  { id: 'transactions', code: '02', label: 'NHẬT KÝ GIAO DỊCH', icon: ReceiptText },
+  { id: 'budgets', code: '03', label: 'PHÂN BỔ & NGÂN SÁCH', icon: PieChart },
+  { id: 'goals', code: '04', label: 'TÍCH LŨY & ĐỊNH KỲ', icon: PiggyBank },
+  { id: 'analytics', code: '05', label: 'SO SÁNH & TỐI ƯU SỐNG', icon: BarChart3 }
 ];
 
 const MONTH_OPTIONS = [
-  { value: '2026-11', label: 'Tháng 11 / 2026 (Hiện tại)' },
-  { value: '2026-10', label: 'Tháng 10 / 2026' },
-  { value: '2026-09', label: 'Tháng 09 / 2026' },
-  { value: '2026-08', label: 'Tháng 08 / 2026' },
+  { value: '2026-11', label: 'Kỳ 11 / 2026 (Hiện tại)' },
+  { value: '2026-10', label: 'Kỳ 10 / 2026' },
+  { value: '2026-09', label: 'Kỳ 09 / 2026' },
+  { value: '2026-08', label: 'Kỳ 08 / 2026' },
   { value: 'ALL', label: 'Tất cả các kỳ' }
 ];
 
@@ -95,7 +95,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState('2026-11');
   const [hideBalance, setHideBalance] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
 
   // Huashu Design System v3.2 + Page Mascot Interactive States
   const [huashuConfig, setHuashuConfig] = useState(() => {
@@ -106,17 +106,17 @@ export default function App() {
       // ignore
     }
     return {
-      direction: 'midnight',
+      direction: 'feltron',
       font: 'modern',
-      radius: 'balanced',
-      texture: 'grid'
+      radius: 'sharp',
+      texture: 'clean'
     };
   });
   const [mascotId, setMascotId] = useState(() => {
     try {
-      return localStorage.getItem('finflow_page_mascot_id') || 'fox';
+      return localStorage.getItem('finflow_page_mascot_id_v4') || 'fox-riso';
     } catch {
-      return 'fox';
+      return 'fox-riso';
     }
   });
   const [mascotReaction, setMascotReaction] = useState(null);
@@ -141,7 +141,7 @@ export default function App() {
       if (dir.recommendedMascot) {
         setMascotId(dir.recommendedMascot);
         try {
-          localStorage.setItem('finflow_page_mascot_id', dir.recommendedMascot);
+          localStorage.setItem('finflow_page_mascot_id_v4', dir.recommendedMascot);
         } catch {
           // ignore
         }
@@ -161,7 +161,7 @@ export default function App() {
   const handleSelectMascot = useCallback((id) => {
     setMascotId(id);
     try {
-      localStorage.setItem('finflow_page_mascot_id', id);
+      localStorage.setItem('finflow_page_mascot_id_v4', id);
     } catch {
       // ignore
     }
@@ -255,10 +255,10 @@ export default function App() {
   // Sync Huashu Design attributes to <html> element and localStorage
   useEffect(() => {
     const root = document.documentElement;
-    root.setAttribute('data-huashu-theme', huashuConfig.direction || 'midnight');
+    root.setAttribute('data-huashu-theme', huashuConfig.direction || 'feltron');
     root.setAttribute('data-huashu-font', huashuConfig.font || 'modern');
-    root.setAttribute('data-huashu-radius', huashuConfig.radius || 'balanced');
-    root.setAttribute('data-huashu-texture', huashuConfig.texture || 'grid');
+    root.setAttribute('data-huashu-radius', huashuConfig.radius || 'sharp');
+    root.setAttribute('data-huashu-texture', huashuConfig.texture || 'clean');
     try {
       localStorage.setItem(HUASHU_STORAGE_KEY, JSON.stringify(huashuConfig));
     } catch {
@@ -794,206 +794,372 @@ export default function App() {
   };
 
   return (
-    <div className="huashu-app-shell min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col lg:flex-row transition-colors">
-      {/* LEFT SIDEBAR NAVIGATION (Desktop) */}
-      <aside className="hidden lg:flex lg:w-64 xl:w-72 flex-col justify-between bg-white dark:bg-slate-900 border-r border-slate-200/80 dark:border-slate-800 p-5 shrink-0 sticky top-0 h-screen">
-        <div>
-          {/* Brand Logo */}
-          <div className="flex items-center gap-3 px-2 mb-7">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-600/25">
-              <Wallet className="w-5 h-5" />
+    <div className="hs-page pb-24">
+      <div className="max-w-[1380px] mx-auto px-4 sm:px-8 pt-5">
+        {/* ====================================================================
+            ROW 1: HUASHU EDITORIAL MASTHEAD (01-personal-annual-report style)
+            ==================================================================== */}
+        <header
+          style={{ borderBottom: '3px solid var(--rule-strong)' }}
+          className="pb-4 flex flex-col lg:flex-row lg:items-end justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            {/* Inline Page-Mascot watching cursor right in Masthead */}
+            <div
+              className="p-1 shrink-0"
+              style={{
+                backgroundColor: 'var(--surface)',
+                border: '2px solid var(--rule-strong)'
+              }}
+            >
+              <Mascot
+                directions={
+                  (MASCOT_CATALOG.find((m) => m.id === mascotId) || MASCOT_CATALOG[0]).directions
+                }
+                reactions={
+                  (MASCOT_CATALOG.find((m) => m.id === mascotId) || MASCOT_CATALOG[0]).reactions
+                }
+                size={54}
+                externalReaction={mascotReaction}
+              />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-lg font-extrabold tracking-tight text-slate-900 dark:text-white">
-                  FinFlow
-                </span>
-                <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                  VN Pro
-                </span>
+              <div
+                className="font-mono-num text-[11px] font-bold tracking-widest uppercase"
+                style={{ color: 'var(--mute)' }}
+              >
+                FINFLOW VN · SỔ CÁI & NIÊN GIÁM TÀI CHÍNH CÁ NHÂN · HUASHU DESIGN EDITION
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Quản lý tài chính cá nhân
-              </p>
+              <h1 className="hs-display text-2xl sm:text-4xl font-black tracking-tight mt-0.5 leading-none">
+                Sổ Cái Thu Chi <span style={{ color: 'var(--accent)' }}>/</span>{' '}
+                <span>{selectedMonth === 'ALL' ? 'Toàn Kỳ' : selectedMonth}</span>
+              </h1>
             </div>
           </div>
 
-          {/* Primary CTA */}
-          <button
-            type="button"
-            onClick={() => {
-              setEditingTx(null);
-              setTxModalOpen(true);
-            }}
-            className="w-full mb-6 py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Ghi Giao Dịch Mới (Phím N)</span>
-          </button>
-
-          {/* Navigation Menu */}
-          <nav className="space-y-1.5">
-            {NAV_TABS.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition cursor-pointer ${
-                    active
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 ring-1 ring-emerald-200 dark:ring-emerald-800/70'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/80 dark:hover:bg-slate-800/60 hover:text-slate-900 dark:hover:text-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`w-4 h-4 ${active ? 'text-emerald-600 dark:text-emerald-400' : ''}`} />
-                    <span>{tab.label}</span>
-                  </div>
-                  {tab.id === 'transactions' && (
-                    <span className="text-[11px] font-mono-num px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {monthTransactions.length}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Cloud PostgreSQL Status Card in Sidebar */}
-        <div className="space-y-3 pt-4 border-t border-slate-200/70 dark:border-slate-800">
-          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
-            <div className="flex items-center justify-between mb-1">
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200">
-                <Database className="w-3.5 h-3.5 text-emerald-500" />
-                Cloud PostgreSQL
-              </span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                Online
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-              {dbStatus.provider}
-            </p>
-            <div className="mt-2 flex items-center justify-between text-[11px]">
-              <button
-                type="button"
-                onClick={fetchCloudState}
-                className="inline-flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-              >
-                <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                Đồng bộ ngay
-              </button>
-              <span className="text-slate-400 font-mono-num">{transactions.length} giao dịch</span>
-            </div>
-          </div>
-
-          <div className="text-[11px] text-slate-400 px-1 flex items-center justify-between">
-            <span>Phím tắt: [N] Thêm • [H] Ẩn số</span>
-          </div>
-        </div>
-      </aside>
-
-      {/* MAIN CONTENT AREA */}
-      <div className="flex-1 flex flex-col min-w-0 pb-20 lg:pb-8">
-        {/* TOP BAR */}
-        <header className="sticky top-0 z-30 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 sm:px-6 lg:px-8 py-3.5">
-          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="lg:hidden w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-sm">
-                <Wallet className="w-4 h-4" />
-              </div>
-              <div>
-                <h1 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
-                  {NAV_TABS.find((t) => t.id === activeTab)?.label}
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
-                  Gợi ý sẵn các mục thiết yếu trong cuộc sống — Bạn chỉ cần điền số tiền hoặc tạo mới
-                </p>
-              </div>
+          {/* Masthead Controls: 4 Huashu Specimen Switchers + Period + Actions */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center" style={{ border: '1px solid var(--rule-strong)' }}>
+              {HUASHU_DIRECTIONS.map((dir) => {
+                const active = huashuConfig.direction === dir.id;
+                return (
+                  <button
+                    key={dir.id}
+                    type="button"
+                    onClick={() => handleApplyHuashuDirection(dir)}
+                    className="px-2.5 py-1.5 text-xs font-bold cursor-pointer transition"
+                    style={{
+                      backgroundColor: active ? 'var(--ink)' : 'var(--surface)',
+                      color: active ? 'var(--bg)' : 'var(--ink)',
+                      borderRight: '1px solid var(--rule)'
+                    }}
+                  >
+                    {dir.name}
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-2.5">
-              <div className="relative">
-                <select
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    setSelectedMonth(e.target.value);
-                    setSelectedDay(null);
-                  }}
-                  className="pl-3 pr-8 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                >
-                  {MONTH_OPTIONS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setSelectedDay(null);
+              }}
+              className="px-3 py-1.5 text-xs font-bold font-mono-num cursor-pointer focus:outline-none"
+              style={{
+                backgroundColor: 'var(--surface)',
+                color: 'var(--ink)',
+                border: '1px solid var(--rule-strong)'
+              }}
+            >
+              {MONTH_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
 
-              <button
-                type="button"
-                onClick={() => setHuashuStudioOpen(true)}
-                title="Huashu Design Studio & Page Mascot"
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-emerald-950/70 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 text-xs font-bold transition cursor-pointer"
-              >
-                <Palette className="w-4 h-4 text-emerald-500" />
-                <span className="hidden md:inline">Huashu × Mascot</span>
-              </button>
+            <button
+              type="button"
+              onClick={() => setHideBalance((prev) => !prev)}
+              title="Ẩn/Hiện số tiền [Phím H]"
+              className="hs-btn-outline px-2.5 py-1.5 text-xs inline-flex items-center gap-1 cursor-pointer"
+            >
+              {hideBalance ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{hideBalance ? 'Hiện số' : 'Ẩn số'}</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setHideBalance((prev) => !prev)}
-                title="Ẩn/Hiện số tiền (Phím H)"
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-              >
-                {hideBalance ? <EyeOff className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
-              </button>
+            <button
+              type="button"
+              onClick={() => setHuashuStudioOpen(true)}
+              className="hs-btn-outline px-3 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Palette className="w-3.5 h-3.5" />
+              <span>Linh vật & Mẫu</span>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => setDarkMode((prev) => !prev)}
-                title="Đổi giao diện Sáng / Tối"
-                className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200/80 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer"
-              >
-                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEditingTx(null);
-                  setTxModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-sm transition cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden sm:inline">Ghi chi tiêu</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTx(null);
+                setTxModalOpen(true);
+              }}
+              className="hs-btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Ghi Giao Dịch [N]</span>
+            </button>
           </div>
         </header>
 
+        {/* ====================================================================
+            ROW 2: STRUCTURAL INDEX NAVIGATION BAR (01-editorial-brutalism style)
+            ==================================================================== */}
+        <nav
+          className="flex flex-wrap items-stretch"
+          style={{
+            borderBottom: '1px solid var(--rule-strong)',
+            backgroundColor: 'var(--surface)'
+          }}
+        >
+          {NAV_TABS.map((tab) => {
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className="px-4 sm:px-6 py-3 text-xs font-extrabold tracking-wide flex items-center gap-2 cursor-pointer transition"
+                style={{
+                  borderRight: '1px solid var(--rule-strong)',
+                  backgroundColor: active ? 'var(--ink)' : 'transparent',
+                  color: active ? 'var(--bg)' : 'var(--ink)'
+                }}
+              >
+                <span
+                  className="font-mono-num"
+                  style={{ color: active ? 'var(--accent)' : 'var(--accent)' }}
+                >
+                  {tab.code}
+                </span>
+                <span>{tab.label}</span>
+                {tab.id === 'transactions' && (
+                  <span
+                    className="font-mono-num text-[11px] px-1.5 py-0.2"
+                    style={{
+                      border: '1px solid currentColor'
+                    }}
+                  >
+                    {monthTransactions.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          <div className="ml-auto px-4 py-2.5 hidden xl:flex items-center gap-3 text-xs font-mono-num">
+            <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: 'var(--positive)' }}>
+              <span
+                className="w-2 h-2 inline-block"
+                style={{ backgroundColor: 'var(--positive)' }}
+              />
+              POSTGRESQL AP-SOUTHEAST-1
+            </span>
+            <button
+              type="button"
+              onClick={fetchCloudState}
+              className="underline font-semibold cursor-pointer"
+              style={{ color: 'var(--mute)' }}
+            >
+              {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ'}
+            </button>
+          </div>
+        </nav>
+
         {/* MAIN WORKSPACE CONTAINER */}
-        <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-          {/* ==================== TAB 1: DASHBOARD (TỔNG QUAN) ==================== */}
+        <main className="py-6 space-y-8">
+          {/* ==================== TAB 1: DASHBOARD (TỔNG QUAN SỔ CÁI) ==================== */}
           {activeTab === 'dashboard' && (
             <>
-              {/* 0. Huashu Design v3.2 × Page Mascot Interactive Studio Bar */}
-              <HuashuStyleBanner
-                huashuConfig={huashuConfig}
-                onApplyDirection={handleApplyHuashuDirection}
-                onOpenStudio={() => setHuashuStudioOpen(true)}
-                mascotId={mascotId}
-                onSelectMascot={handleSelectMascot}
-                externalReaction={mascotReaction}
-                onTriggerReaction={(type) => triggerMascotReaction(type)}
-              />
+              {/* 1. FELTRON GIANT NUMBER STRIP (01-personal-annual-report.html .strip) */}
+              <section
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12"
+                style={{
+                  borderTop: '1px solid var(--rule-strong)',
+                  borderBottom: '3px solid var(--rule-strong)'
+                }}
+              >
+                {/* Col 1: Total Net Worth */}
+                <div className="lg:col-span-4 py-4 pr-5">
+                  <div
+                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--mute)' }}
+                  >
+                    01 / TỔNG SỐ DƯ 4 VÍ NGUỒN TIỀN
+                  </div>
+                  <div
+                    className="hs-display font-mono-num text-4xl sm:text-5xl font-black tracking-tight mt-2 leading-none"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    {formatVND(totalNetWorth, hideBalance)}
+                  </div>
+                  <div className="text-xs mt-2.5 flex items-center justify-between" style={{ color: 'var(--mute)' }}>
+                    <span>Chênh lệch thu - chi kỳ này:</span>
+                    <strong className="font-mono-num" style={{ color: 'var(--ink)' }}>
+                      {monthNetCashflow >= 0 ? '+' : ''}
+                      {formatVND(monthNetCashflow, hideBalance)}
+                    </strong>
+                  </div>
+                </div>
 
-              {/* 1. Smart Natural Language Quick-Add Bar with Suggestion Chips */}
+                {/* Col 2: Income */}
+                <div
+                  className="lg:col-span-2 py-4 lg:px-4"
+                  style={{ borderLeft: '1px solid var(--rule-strong)' }}
+                >
+                  <div
+                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--mute)' }}
+                  >
+                    02 / THU NHẬP KỲ
+                  </div>
+                  <div
+                    className="hs-display font-mono-num text-2xl sm:text-3xl font-black tracking-tight mt-2 leading-none"
+                    style={{ color: 'var(--positive)' }}
+                  >
+                    +{formatCompactVND(monthIncome, hideBalance)}
+                  </div>
+                  <div className="text-xs mt-3" style={{ color: 'var(--mute)' }}>
+                    Tỷ lệ tích lũy ròng:{' '}
+                    <strong className="font-mono-num" style={{ color: 'var(--ink)' }}>
+                      {savingsRate.toFixed(1)}%
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Col 3: Expense */}
+                <div
+                  className="lg:col-span-2 py-4 lg:px-4"
+                  style={{ borderLeft: '1px solid var(--rule-strong)' }}
+                >
+                  <div
+                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--mute)' }}
+                  >
+                    03 / CHI TIÊU KỲ
+                  </div>
+                  <div
+                    className="hs-display font-mono-num text-2xl sm:text-3xl font-black tracking-tight mt-2 leading-none"
+                    style={{ color: 'var(--negative)' }}
+                  >
+                    -{formatCompactVND(monthExpense, hideBalance)}
+                  </div>
+                  <div className="text-xs mt-3" style={{ color: 'var(--mute)' }}>
+                    So với ngân sách:{' '}
+                    <strong className="font-mono-num" style={{ color: 'var(--ink)' }}>
+                      {totalMonthlyBudget > 0
+                        ? `${((monthExpense / totalMonthlyBudget) * 100).toFixed(1)}%`
+                        : 'Chưa đặt'}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Col 4: Safe Daily Spend */}
+                <div
+                  className="lg:col-span-2 py-4 lg:px-4"
+                  style={{ borderLeft: '1px solid var(--rule-strong)' }}
+                >
+                  <div
+                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--mute)' }}
+                  >
+                    04 / AN TOÀN MỖI NGÀY
+                  </div>
+                  <div
+                    className="hs-display font-mono-num text-2xl sm:text-3xl font-black tracking-tight mt-2 leading-none"
+                    style={{ color: 'var(--slate)' }}
+                  >
+                    {totalMonthlyBudget > 0 ? formatCompactVND(safeDailySpend, hideBalance) : '—'}
+                  </div>
+                  <div className="text-xs mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('budgets')}
+                      className="underline font-bold cursor-pointer"
+                      style={{ color: 'var(--ink)' }}
+                    >
+                      {totalMonthlyBudget > 0
+                        ? `Còn dư ${formatCompactVND(budgetRemaining, hideBalance)}`
+                        : 'Thiết lập hạn mức'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Col 5: Quick Wallets Ledger */}
+                <div
+                  className="lg:col-span-2 py-4 lg:pl-4 flex flex-col justify-between"
+                  style={{ borderLeft: '1px solid var(--rule-strong)' }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className="font-mono-num text-xs font-bold uppercase tracking-wider"
+                      style={{ color: 'var(--mute)' }}
+                    >
+                      05 / CÁC VÍ ({wallets.length})
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingWallet(null);
+                          setWalletModalMode('transfer');
+                          setWalletModalOpen(true);
+                        }}
+                        className="text-[11px] font-bold underline cursor-pointer"
+                      >
+                        Chuyển ví
+                      </button>
+                      <span>·</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingWallet(null);
+                          setWalletModalMode('wallet');
+                          setWalletModalOpen(true);
+                        }}
+                        className="text-[11px] font-bold underline cursor-pointer"
+                        style={{ color: 'var(--accent)' }}
+                      >
+                        + Ví mới
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-2 space-y-1">
+                    {wallets.slice(0, 4).map((w) => (
+                      <button
+                        key={w.id}
+                        type="button"
+                        onClick={() => {
+                          setEditingWallet(w);
+                          setWalletModalMode('wallet');
+                          setWalletModalOpen(true);
+                        }}
+                        className="w-full flex items-center justify-between text-xs py-0.5 hover:opacity-75 cursor-pointer"
+                        style={{ borderBottom: '1px dotted var(--rule)' }}
+                      >
+                        <span className="truncate font-semibold">{w.name}</span>
+                        <span className="font-mono-num font-bold">
+                          {w.balance === 0 ? 'Nhập số dư' : formatCompactVND(w.balance, hideBalance)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </section>
+
+              {/* 2. NATURAL LANGUAGE COMMAND BAR */}
               <QuickAddBar
                 categories={categories}
                 wallets={wallets}
@@ -1005,182 +1171,8 @@ export default function App() {
                 }}
               />
 
-              {/* 2. KPI Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                <div className="p-5 rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white shadow-lg shadow-emerald-600/15 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-emerald-100">
-                      Tổng Số Dư Các Ví
-                    </span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
-                      {wallets.length} Ví sẵn có
-                    </span>
-                  </div>
-                  <div className="my-3">
-                    <p className="text-2xl font-extrabold font-mono-num tracking-tight">
-                      {formatVND(totalNetWorth, hideBalance)}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between text-[11px] text-emerald-100">
-                    <span>Chênh lệch thu chi:</span>
-                    <span className="font-mono-num font-bold text-white">
-                      {monthNetCashflow >= 0 ? '+' : ''}
-                      {formatCompactVND(monthNetCashflow, hideBalance)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      Tổng Thu Nhập Kỳ Này
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-                      <ArrowUpRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="my-3">
-                    <p className="text-2xl font-extrabold font-mono-num text-emerald-600 dark:text-emerald-400">
-                      +{formatVND(monthIncome, hideBalance)}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>Tỷ lệ tiết kiệm ròng:</span>
-                    <span className="font-mono-num font-bold text-emerald-600 dark:text-emerald-400">
-                      {savingsRate.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      Tổng Chi Tiêu Kỳ Này
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/70 text-rose-600 dark:text-rose-400 flex items-center justify-center">
-                      <ArrowDownRight className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="my-3">
-                    <p className="text-2xl font-extrabold font-mono-num text-rose-600 dark:text-rose-400">
-                      -{formatVND(monthExpense, hideBalance)}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>So với ngân sách tháng:</span>
-                    <span className="font-mono-num font-bold text-slate-800 dark:text-slate-200">
-                      {totalMonthlyBudget > 0
-                        ? `${((monthExpense / totalMonthlyBudget) * 100).toFixed(1)}%`
-                        : 'Chưa đặt hạn mức'}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="p-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                      Hạn Mức Chi An Toàn / Ngày
-                    </span>
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/70 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
-                  </div>
-                  <div className="my-3">
-                    <p className="text-2xl font-extrabold font-mono-num text-blue-600 dark:text-blue-400">
-                      {totalMonthlyBudget > 0 ? formatVND(safeDailySpend, hideBalance) : '—'}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
-                    <span>Ngân sách còn lại:</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('budgets')}
-                      className="font-mono-num font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                    >
-                      {totalMonthlyBudget > 0
-                        ? formatCompactVND(budgetRemaining, hideBalance)
-                        : 'Thiết lập ngay →'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Wallets Bar (Đã tạo sẵn 4 Ví thiết yếu ở mức 0 ₫ để user tự điền hoặc thêm mới) */}
-              <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-                  <div>
-                    <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
-                      Nguồn Tiền & Ví Cá Nhân (Đã tạo sẵn các ví thiết yếu)
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Chạm vào từng ví để nhập số dư thực tế của bạn, hoặc nhấn &ldquo;+ Thêm ví&rdquo; để tạo ví mới
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingWallet(null);
-                        setWalletModalMode('transfer');
-                        setWalletModalOpen(true);
-                      }}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition cursor-pointer"
-                    >
-                      <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-600" />
-                      Chuyển tiền giữa các ví
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingWallet(null);
-                        setWalletModalMode('wallet');
-                        setWalletModalOpen(true);
-                      }}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/70 text-xs font-bold text-emerald-700 dark:text-emerald-300 transition cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      Thêm ví mới
-                    </button>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-                  {wallets.map((w) => (
-                    <div
-                      key={w.id}
-                      onClick={() => {
-                        setEditingWallet(w);
-                        setWalletModalMode('wallet');
-                        setWalletModalOpen(true);
-                      }}
-                      className="group p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-600 bg-slate-50/60 dark:bg-slate-800/40 transition cursor-pointer flex flex-col justify-between"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div
-                          className="w-9 h-9 rounded-xl flex items-center justify-center"
-                          style={{ backgroundColor: `${w.color}20`, color: w.color }}
-                        >
-                          <DynamicIcon name={w.icon} className="w-4 h-4" />
-                        </div>
-                        <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 group-hover:underline">
-                          {w.balance === 0 ? 'Nhập số dư →' : w.account_number}
-                        </span>
-                      </div>
-                      <div className="mt-3">
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200 truncate">
-                          {w.name}
-                        </p>
-                        <p className="text-base font-extrabold font-mono-num text-slate-900 dark:text-white mt-0.5">
-                          {formatVND(w.balance, hideBalance)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3b. Smart Monthly Income Allocator directly on Dashboard */}
-              {showDashboardAllocator ? (
+              {/* 3. SMART MONTHLY INCOME ALLOCATOR */}
+              {showDashboardAllocator && (
                 <SmartIncomeAllocator
                   categories={categories}
                   hideBalance={hideBalance}
@@ -1198,45 +1190,36 @@ export default function App() {
                     })
                   }
                 />
-              ) : (
-                <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
-                    💡 Cần chia lại tiền trọ, ăn uống, tiết kiệm theo tổng thu nhập tháng?
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowDashboardAllocator(true)}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer"
-                  >
-                    Mở Bộ Phân Bổ Tự Động
-                  </button>
-                </div>
               )}
 
-              {/* 4. Recent Transactions & Essential Life Suggestions */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                {/* Left: Recent Transactions or Quick Category Starters */}
-                <div className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
-                  <div className="flex items-center justify-between mb-4">
+              {/* 4. ASYMMETRIC EDITORIAL LEDGER COLUMNS (Exposed 1px rules) */}
+              <section
+                className="grid grid-cols-1 lg:grid-cols-12 pt-4"
+                style={{ borderTop: '3px solid var(--rule-strong)' }}
+              >
+                {/* Left 7 Cols: Recent Transactions or Essential Category Starters */}
+                <div className="lg:col-span-7 lg:pr-6 pb-6 lg:pb-0">
+                  <div className="flex items-baseline justify-between mb-4">
                     <div>
-                      <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                      <span
+                        className="font-mono-num text-xs font-extrabold"
+                        style={{ color: 'var(--accent)', letterSpacing: '0.08em' }}
+                      >
+                        MỤC 06
+                      </span>
+                      <h3 className="text-base sm:text-lg font-extrabold mt-0.5">
                         {monthTransactions.length > 0
-                          ? 'Giao Dịch Vừa Ghi Nhận'
-                          : 'Danh Mục Thiết Yếu Đã Chuẩn Bị Sẵn Cho Bạn'}
+                          ? 'Nhật Ký Giao Dịch Gần Nhất'
+                          : 'Danh Mục Thiết Yếu Đã Tạo Sẵn (Chạm Để Điền Số Tiền)'}
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {monthTransactions.length > 0
-                          ? 'Nhấn vào giao dịch bất kỳ để chỉnh sửa'
-                          : 'Chưa có giao dịch nào — Chạm vào một mục dưới đây để điền số tiền hoặc tự tạo mới'}
-                      </p>
                     </div>
                     {monthTransactions.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setActiveTab('transactions')}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        className="text-xs font-bold underline cursor-pointer"
                       >
-                        Xem toàn bộ ({monthTransactions.length}) →
+                        Xem toàn bộ ({monthTransactions.length})
                       </button>
                     )}
                   </div>
@@ -1329,11 +1312,20 @@ export default function App() {
                 </div>
 
                 {/* Right: Recurring Bills or Life Bill Suggestions */}
-                <div className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm flex flex-col justify-between">
+                <div
+                  className="lg:col-span-5 lg:pl-6 flex flex-col justify-between"
+                  style={{ borderLeft: '1px solid var(--rule-strong)' }}
+                >
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
+                        <span
+                          className="font-mono-num text-xs font-extrabold"
+                          style={{ color: 'var(--accent)', letterSpacing: '0.08em' }}
+                        >
+                          MỤC 07
+                        </span>
+                        <h3 className="text-base sm:text-lg font-extrabold mt-0.5">
                           Hóa Đơn Định Kỳ Hàng Tháng
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -1345,9 +1337,9 @@ export default function App() {
                       <button
                         type="button"
                         onClick={() => setActiveTab('goals')}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
+                        className="text-xs font-bold underline cursor-pointer"
                       >
-                        Quản lý →
+                        Quản lý
                       </button>
                     </div>
 
@@ -1427,7 +1419,7 @@ export default function App() {
                     )}
                   </div>
                 </div>
-              </div>
+              </section>
 
               {/* 5. Charts Row: Cashflow Trend & Category Donut */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -2614,6 +2606,16 @@ export default function App() {
         mascotId={mascotId}
         onSelectMascot={handleSelectMascot}
         externalReaction={mascotReaction}
+        onTriggerReaction={(type) => triggerMascotReaction(type)}
+      />
+
+      {/* BOTTOM-RIGHT COLLAPSIBLE HUASHU TWEAKS PANEL */}
+      <HuashuTweaksPanel
+        huashuConfig={huashuConfig}
+        onUpdateConfig={handleUpdateHuashuConfig}
+        onApplyDirection={handleApplyHuashuDirection}
+        mascotId={mascotId}
+        onSelectMascot={handleSelectMascot}
         onTriggerReaction={(type) => triggerMascotReaction(type)}
       />
 

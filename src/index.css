@@ -1,113 +1,245 @@
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* ============================================================================
+   HUASHU DESIGN SYSTEM (alchaincyf/huashu-design)
+   Specimens:
+   - 01-personal-annual-report (Feltron Uncoated Paper + Vermilion #D8341C + Slate #4B6479)
+   - 20-swiss-grid-report (Swiss International Grid + #E0311F + Heavy Black Rules)
+   - saas-takram (Takram Warm Stone #F5F0EB + Botanical Sage #5B7F63 + Editorial Serif)
+   - 01-hardware-panel (Braun / Teenage Engineering Dark Console + #FF5A1F)
+   ============================================================================ */
+
+:root,
+[data-huashu-theme="feltron"],
+[data-huashu-theme="paper"] {
+  color-scheme: light;
+  --bg: #F3EEE4;
+  --surface: #FAF6EE;
+  --surface-alt: #E9E1D2;
+  --ink: #1B1B1B;
+  --mute: #5E584F;
+  --rule-strong: #1B1B1B;
+  --rule: rgba(27, 27, 27, 0.24);
+  --rule-soft: rgba(27, 27, 27, 0.12);
+  --accent: #D8341C;
+  --accent-fg: #FAF6EE;
+  --slate: #4B6479;
+  --ochre: #C99A2E;
+  --positive: #1D6846;
+  --negative: #D8341C;
+  --huashu-font-display: 'Archivo', 'Be Vietnam Pro', sans-serif;
+  --huashu-font-serif: 'Playfair Display', Georgia, serif;
+  --huashu-font-body: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, sans-serif;
+  --huashu-font-mono: 'JetBrains Mono', monospace;
+}
+
+[data-huashu-theme="swiss"] {
+  color-scheme: light;
+  --bg: #FFFFFF;
+  --surface: #F7F7F5;
+  --surface-alt: #EDEDEA;
+  --ink: #111111;
+  --mute: #555555;
+  --rule-strong: #111111;
+  --rule: rgba(17, 17, 17, 0.22);
+  --rule-soft: rgba(17, 17, 17, 0.1);
+  --accent: #E0311F;
+  --accent-fg: #FFFFFF;
+  --slate: #2B4C7E;
+  --ochre: #D97706;
+  --positive: #0F766E;
+  --negative: #E0311F;
+}
+
+[data-huashu-theme="takram"] {
+  color-scheme: light;
+  --bg: #F5F0EB;
+  --surface: #FCF9F5;
+  --surface-alt: #EAE3DC;
+  --ink: #2B3032;
+  --mute: #6E6A64;
+  --rule-strong: #2B3032;
+  --rule: rgba(43, 48, 50, 0.2);
+  --rule-soft: rgba(43, 48, 50, 0.1);
+  --accent: #4E7A5B;
+  --accent-fg: #FCF9F5;
+  --slate: #526B7A;
+  --ochre: #B8863B;
+  --positive: #3B6E4C;
+  --negative: #C44D34;
+}
+
+[data-huashu-theme="hardware"],
+[data-huashu-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #111214;
+  --surface: #181A1E;
+  --surface-alt: #22252B;
+  --ink: #F2F2EE;
+  --mute: #9A9A92;
+  --rule-strong: #F2F2EE;
+  --rule: rgba(242, 242, 238, 0.2);
+  --rule-soft: rgba(242, 242, 238, 0.1);
+  --accent: #FF5A1F;
+  --accent-fg: #111214;
+  --slate: #60A5FA;
+  --ochre: #FBBF24;
+  --positive: #34D399;
+  --negative: #FF5A1F;
+}
+
+[data-huashu-font="editorial"] {
+  --huashu-font-display: 'Playfair Display', Georgia, serif;
+}
+[data-huashu-font="modern"] {
+  --huashu-font-display: 'Archivo', 'Be Vietnam Pro', sans-serif;
+}
+[data-huashu-font="technical"] {
+  --huashu-font-display: 'JetBrains Mono', monospace;
+}
+
 @layer base {
-  :root {
-    font-family: 'Be Vietnam Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --huashu-font-heading: 'Be Vietnam Pro', sans-serif;
-    --huashu-font-body: 'Be Vietnam Pro', sans-serif;
-  }
-
   body {
+    background-color: var(--bg);
+    color: var(--ink);
     font-family: var(--huashu-font-body);
+    font-size: 15px;
+    line-height: 1.6;
     overflow-x: hidden;
-    transition: background-color 220ms ease, color 220ms ease;
   }
 
-  h1, h2, h3, .huashu-heading {
-    font-family: var(--huashu-font-heading);
+  h1, h2, h3, .hs-display {
+    font-family: var(--huashu-font-display);
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
   }
 }
 
 .font-mono-num {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--huashu-font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* ============================================================================
-   HUASHU DESIGN SYSTEM (alchaincyf/huashu-design v3.2) — MULTI-STYLE DIRECTIONS
-   ============================================================================ */
-
-/* Typography Tweaks */
-[data-huashu-font="editorial"] {
-  --huashu-font-heading: 'Playfair Display', Georgia, Cambria, serif;
-  --huashu-font-body: 'Be Vietnam Pro', sans-serif;
-}
-[data-huashu-font="editorial"] h1,
-[data-huashu-font="editorial"] h2,
-[data-huashu-font="editorial"] h3 {
-  letter-spacing: -0.015em;
+/* Huashu Structural Primitives */
+.hs-page {
+  background-color: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
 }
 
-[data-huashu-font="technical"] {
-  --huashu-font-heading: 'JetBrains Mono', monospace;
-  --huashu-font-body: 'Be Vietnam Pro', sans-serif;
+.hs-rule-top-heavy {
+  border-top: 3px solid var(--rule-strong);
 }
 
-/* Corner Radius Tweaks */
-[data-huashu-radius="sharp"] .rounded-3xl,
-[data-huashu-radius="sharp"] .rounded-2xl,
-[data-huashu-radius="sharp"] .rounded-xl {
-  border-radius: 6px !important;
+.hs-rule-bottom-heavy {
+  border-bottom: 3px solid var(--rule-strong);
 }
 
-[data-huashu-radius="organic"] .rounded-3xl {
-  border-radius: 28px !important;
-}
-[data-huashu-radius="organic"] .rounded-2xl {
-  border-radius: 20px !important;
+.hs-rule-top {
+  border-top: 1px solid var(--rule);
 }
 
-/* Direction 1: Warm Archival Paper (Ấn Phẩm Giấy Ấm · Kinfolk / 吕敬人) */
-[data-huashu-theme="paper"] .huashu-app-shell {
-  background-color: #f4efe6 !important;
-  color: #1e1b18 !important;
-}
-[data-huashu-theme="paper"] aside,
-[data-huashu-theme="paper"] header {
-  background-color: rgba(251, 248, 241, 0.94) !important;
-  border-color: #d8cfc0 !important;
-}
-[data-huashu-theme="paper"] .bg-white {
-  background-color: #fbf8f1 !important;
-  border-color: #dcd3c4 !important;
-}
-[data-huashu-theme="paper"] .bg-slate-50,
-[data-huashu-theme="paper"] .bg-slate-100 {
-  background-color: #efe9dc !important;
+.hs-rule-bottom {
+  border-bottom: 1px solid var(--rule);
 }
 
-/* Direction 2: Tactile Hardware Ledger (Bảng Cơ Khí · Braun / Dieter Rams) */
-[data-huashu-theme="hardware"] .huashu-app-shell {
-  background-color: #e6e5e0 !important;
-  color: #181816 !important;
-}
-[data-huashu-theme="hardware"] aside,
-[data-huashu-theme="hardware"] header {
-  background-color: #efefeb !important;
-  border-color: #c2c0b6 !important;
-}
-[data-huashu-theme="hardware"] .bg-white {
-  background-color: #f5f5f2 !important;
-  border-color: #c6c4ba !important;
-  box-shadow: 0 1px 0 #c6c4ba !important;
-}
-[data-huashu-theme="hardware"] .bg-slate-50,
-[data-huashu-theme="hardware"] .bg-slate-100 {
-  background-color: #dfded8 !important;
+.hs-panel {
+  background-color: var(--surface);
+  border: 1px solid var(--rule);
 }
 
-/* Surface Textures (Huashu Grid / Paper Grain) */
-[data-huashu-texture="grid"] .huashu-app-shell {
-  background-image:
-    linear-gradient(to right, rgba(148, 163, 184, 0.09) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.09) 1px, transparent 1px);
-  background-size: 28px 28px;
+.hs-btn-primary {
+  background-color: var(--accent);
+  color: var(--accent-fg);
+  font-family: var(--huashu-font-body);
+  font-weight: 700;
+  border: 1px solid var(--accent);
+  transition: opacity 150ms ease, transform 120ms ease;
+}
+.hs-btn-primary:hover {
+  opacity: 0.9;
 }
 
-[data-huashu-texture="paper"] .huashu-app-shell {
-  background-image: radial-gradient(rgba(120, 113, 108, 0.08) 1px, transparent 0);
-  background-size: 18px 18px;
+.hs-btn-outline {
+  background-color: transparent;
+  color: var(--ink);
+  border: 1px solid var(--rule-strong);
+  font-weight: 600;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.hs-btn-outline:hover {
+  background-color: var(--ink);
+  color: var(--bg);
+}
+
+/* Restyle inner subcomponents so they inherit Huashu Editorial Ledger geometry */
+.hs-page .rounded-3xl,
+.hs-page .rounded-2xl {
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+.hs-page .rounded-xl,
+.hs-page .rounded-lg {
+  border-radius: 2px !important;
+}
+
+.hs-page .bg-white,
+.hs-page .dark\:bg-slate-900 {
+  background-color: var(--surface) !important;
+  border-color: var(--rule) !important;
+  color: var(--ink) !important;
+}
+
+.hs-page .bg-slate-50,
+.hs-page .bg-slate-100,
+.hs-page .dark\:bg-slate-800,
+.hs-page .dark\:bg-slate-800\/40,
+.hs-page .dark\:bg-slate-800\/50,
+.hs-page .dark\:bg-slate-800\/60 {
+  background-color: var(--surface-alt) !important;
+  border-color: var(--rule) !important;
+  color: var(--ink) !important;
+}
+
+.hs-page .text-slate-900,
+.hs-page .dark\:text-white,
+.hs-page .text-slate-800,
+.hs-page .dark\:text-slate-100,
+.hs-page .dark\:text-slate-200 {
+  color: var(--ink) !important;
+}
+
+.hs-page .text-slate-500,
+.hs-page .text-slate-400,
+.hs-page .dark\:text-slate-400,
+.hs-page .text-slate-600,
+.hs-page .dark\:text-slate-300 {
+  color: var(--mute) !important;
+}
+
+.hs-page .bg-emerald-600,
+.hs-page .from-emerald-600,
+.hs-page .from-emerald-500,
+.hs-page .bg-gradient-to-br,
+.hs-page .bg-gradient-to-r {
+  background-image: none !important;
+  background-color: var(--accent) !important;
+  color: var(--accent-fg) !important;
+}
+
+.hs-page .text-emerald-600,
+.hs-page .dark\:text-emerald-400 {
+  color: var(--positive) !important;
+}
+
+.hs-page .text-rose-600,
+.hs-page .dark\:text-rose-400 {
+  color: var(--negative) !important;
 }
 
 /* Custom subtle scrollbars */
@@ -120,7 +252,6 @@
 }
 ::-webkit-scrollbar-thumb {
   background: rgba(148, 163, 184, 0.35);
-  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(100, 116, 139, 0.55);
