@@ -241,23 +241,30 @@ export function SmartIncomeAllocator({
   };
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-emerald-200/90 dark:border-emerald-800/70 p-5 sm:p-6 shadow-sm space-y-5">
+    <div className="panel space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-600/20">
+          <div
+            className="w-10 h-10 flex items-center justify-center shrink-0"
+            style={{
+              borderRadius: '7px',
+              backgroundColor: 'var(--primary)',
+              color: '#fff'
+            }}
+          >
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-white">
+              <h3 className="text-base sm:text-lg font-bold" style={{ color: 'var(--text)' }}>
                 Phân Tích & Phân Bổ Chi Tiêu Tháng Tự Động
               </h3>
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+              <span className="pill">
                 Tối ưu theo chi phí sinh hoạt thực tế
               </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+            <p className="text-xs mt-0.5" style={{ color: 'var(--muted)' }}>
               Nhập tổng số tiền bạn có trong tháng — Hệ thống tự động tính toán tiền trọ, ăn uống từng ngày, đi chợ, xăng xe và tiết kiệm hợp lý nhất
             </p>
           </div>
@@ -265,10 +272,17 @@ export function SmartIncomeAllocator({
       </div>
 
       {/* Controls: Income Input + Lifestyle Mode Selectors */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/70">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-12 gap-4 p-4"
+        style={{
+          backgroundColor: 'var(--bg)',
+          border: '1px solid var(--line)',
+          borderRadius: '9px'
+        }}
+      >
         {/* Step 1: Total Monthly Money */}
         <div className="lg:col-span-5 space-y-2">
-          <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-200">
+          <label className="block text-xs font-semibold" style={{ color: 'var(--text)' }}>
             1. Nhập tổng thu nhập / ngân sách tháng của bạn:
           </label>
           <div className="relative">
@@ -280,9 +294,18 @@ export function SmartIncomeAllocator({
                 setCustomOverrides({});
               }}
               placeholder="VD: 12tr, 15tr, 20000000..."
-              className="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-emerald-400 dark:border-emerald-600 font-mono-num text-base font-extrabold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3.5 py-2.5 font-mono-num text-base font-bold focus:outline-none"
+              style={{
+                backgroundColor: 'var(--surface)',
+                border: '1px solid var(--primary)',
+                borderRadius: '7px',
+                color: 'var(--text)'
+              }}
             />
-            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono-num font-bold text-emerald-600 dark:text-emerald-400">
+            <span
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono-num font-bold"
+              style={{ color: 'var(--primary-dark)' }}
+            >
               = {formatVND(evaluatedIncome, hideBalance)}
             </span>
           </div>
@@ -295,11 +318,13 @@ export function SmartIncomeAllocator({
                   setIncomeInput(String(p.value));
                   setCustomOverrides({});
                 }}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono-num font-bold transition cursor-pointer ${
-                  evaluatedIncome === p.value
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-emerald-400'
-                }`}
+                className="px-2.5 py-1 text-[11px] font-mono-num font-semibold transition cursor-pointer"
+                style={{
+                  borderRadius: '7px',
+                  backgroundColor: evaluatedIncome === p.value ? 'var(--primary)' : 'var(--surface)',
+                  color: evaluatedIncome === p.value ? '#fff' : 'var(--text)',
+                  border: '1px solid var(--line)'
+                }}
               >
                 {p.label}
               </button>
@@ -309,7 +334,7 @@ export function SmartIncomeAllocator({
 
         {/* Step 2: Housing Mode */}
         <div className="lg:col-span-4 space-y-2">
-          <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-200">
+          <label className="block text-xs font-semibold" style={{ color: 'var(--text)' }}>
             2. Nhu cầu chỗ ở hiện tại:
           </label>
           <div className="grid grid-cols-1 gap-1.5">
@@ -325,11 +350,13 @@ export function SmartIncomeAllocator({
                   setHousingMode(opt.id);
                   setCustomOverrides({});
                 }}
-                className={`px-3 py-2 rounded-xl text-xs font-bold text-left border transition cursor-pointer ${
-                  housingMode === opt.id
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
+                className="px-3 py-2 text-xs font-semibold text-left transition cursor-pointer"
+                style={{
+                  borderRadius: '7px',
+                  backgroundColor: housingMode === opt.id ? 'var(--primary-soft)' : 'var(--surface)',
+                  border: `1px solid ${housingMode === opt.id ? 'var(--primary)' : 'var(--line)'}`,
+                  color: housingMode === opt.id ? 'var(--primary-dark)' : 'var(--text)'
+                }}
               >
                 {opt.label}
               </button>
@@ -339,7 +366,7 @@ export function SmartIncomeAllocator({
 
         {/* Step 3: Food & Cooking Mode */}
         <div className="lg:col-span-3 space-y-2">
-          <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-200">
+          <label className="block text-xs font-semibold" style={{ color: 'var(--text)' }}>
             3. Thói quen ăn uống:
           </label>
           <div className="grid grid-cols-1 gap-1.5">
@@ -355,11 +382,13 @@ export function SmartIncomeAllocator({
                   setFoodMode(opt.id);
                   setCustomOverrides({});
                 }}
-                className={`px-3 py-2 rounded-xl text-xs font-bold text-left border transition cursor-pointer ${
-                  foodMode === opt.id
-                    ? 'bg-emerald-50 dark:bg-emerald-950/70 border-emerald-500 text-emerald-700 dark:text-emerald-300'
-                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                }`}
+                className="px-3 py-2 text-xs font-semibold text-left transition cursor-pointer"
+                style={{
+                  borderRadius: '7px',
+                  backgroundColor: foodMode === opt.id ? 'var(--primary-soft)' : 'var(--surface)',
+                  border: `1px solid ${foodMode === opt.id ? 'var(--primary)' : 'var(--line)'}`,
+                  color: foodMode === opt.id ? 'var(--primary-dark)' : 'var(--text)'
+                }}
               >
                 {opt.label}
               </button>
@@ -510,7 +539,7 @@ export function SmartIncomeAllocator({
             <button
               type="button"
               onClick={() => setCustomOverrides({})}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer"
+              className="btn secondary small"
             >
               Khôi phục mức gợi ý chuẩn
             </button>
@@ -518,7 +547,7 @@ export function SmartIncomeAllocator({
           <button
             type="button"
             onClick={handleApplyAll}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20 transition cursor-pointer"
+            className="btn primary"
           >
             <Check className="w-4 h-4" />
             <span>

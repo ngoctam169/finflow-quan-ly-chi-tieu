@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Plus, Check, SlidersHorizontal } from 'lucide-react';
+import { Plus, Check, SlidersHorizontal, ArrowRight } from 'lucide-react';
 import { parseNaturalTransaction, formatVND, formatDateVN } from '../utils/smartParser.js';
 import { DynamicIcon } from './IconMap.jsx';
 
@@ -66,108 +66,92 @@ export function QuickAddBar({
   };
 
   return (
-    <section
-      style={{
-        borderTop: '2px solid var(--rule-strong)',
-        borderBottom: '1px solid var(--rule-strong)',
-        backgroundColor: 'var(--surface)'
-      }}
-      className="p-4 sm:p-6"
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
-        <div className="flex flex-wrap items-baseline gap-3">
-          <span
-            className="font-mono-num text-xs font-extrabold"
-            style={{ color: 'var(--accent)', letterSpacing: '0.08em' }}
-          >
-            GHI SỔ NHANH
+    <div className="panel" style={{ padding: '20px 22px' }}>
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div>
+          <span className="overline" style={{ marginBottom: 2 }}>
+            QUICK LEDGER INPUT · NHẬP NHANH 3 GIÂY
           </span>
-          <h2 className="text-base sm:text-lg font-bold" style={{ color: 'var(--ink)' }}>
-            Nhập ngôn ngữ tự nhiên trong 3 giây hoặc chọn mẫu gợi ý
-          </h2>
+          <strong className="serif-heading text-base font-medium">
+            Gõ nội dung kèm số tiền hoặc chọn mục gợi ý thiết yếu
+          </strong>
         </div>
-
         <button
           type="button"
           onClick={() => onOpenFullModal()}
-          className="hs-btn-outline inline-flex items-center gap-1.5 text-xs px-3 py-1.5 cursor-pointer"
+          className="btn secondary small"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Biểu mẫu chi tiết [Phím N]</span>
+          <span>Biểu mẫu đầy đủ [N]</span>
         </button>
       </div>
 
-      {/* Smart Natural Language Input Form */}
-      <form onSubmit={handleSubmit} className="relative">
-        <div
-          className="flex flex-col sm:flex-row"
-          style={{ border: '2px solid var(--rule-strong)', backgroundColor: 'var(--bg)' }}
-        >
+      <form onSubmit={handleSubmit}>
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             ref={inputRef}
             type="text"
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Gõ khoản thu/chi: Ăn trưa 45k, Đi chợ 120k, Đổ xăng 70k, Lương tháng 18tr..."
-            className="flex-1 px-4 py-3.5 text-sm sm:text-base font-medium focus:outline-none"
-            style={{ color: 'var(--ink)', backgroundColor: 'transparent' }}
+            placeholder="Ví dụ: Ăn trưa 45k, Đi chợ 120k, Đổ xăng 70k, Lương tháng 18tr..."
+            className="flex-1 px-3.5 py-2.5 text-sm font-medium"
+            style={{ minHeight: 44 }}
           />
-          <button
-            type="submit"
-            className="hs-btn-primary inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm cursor-pointer shrink-0"
-          >
+          <button type="submit" className="btn shrink-0">
             <Plus className="w-4 h-4" />
             <span>{parsed?.isValid ? 'Ghi sổ ngay' : 'Điền số tiền'}</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Real-time Smart Parser Preview */}
         {parsed && (
           <div
             className="mt-3 p-3 flex flex-wrap items-center justify-between gap-2 text-xs"
             style={{
-              backgroundColor: 'var(--surface-alt)',
-              borderLeft: '3px solid var(--accent)'
+              backgroundColor: 'var(--surface-2)',
+              borderRadius: 7,
+              border: '1px solid var(--line)'
             }}
           >
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="font-mono-num font-bold" style={{ color: 'var(--mute)' }}>
-                PHÂN TÍCH TỰ ĐỘNG:
-              </span>
+            <div className="flex flex-wrap items-center gap-2">
               <span
-                className="px-2 py-0.5 font-mono-num font-bold"
+                className="px-2 py-0.5 font-mono-num font-semibold"
                 style={{
-                  backgroundColor: parsed.type === 'income' ? 'var(--positive)' : 'var(--accent)',
-                  color: '#fff'
+                  borderRadius: 5,
+                  backgroundColor:
+                    parsed.type === 'income' ? 'var(--green-soft)' : 'var(--primary-soft)',
+                  color: parsed.type === 'income' ? 'var(--green)' : 'var(--primary-dark)'
                 }}
               >
-                {parsed.type === 'income' ? '+ THU NHẬP' : '- CHI TIÊU'}
+                {parsed.type === 'income' ? '+ Thu nhập' : '- Chi tiêu'}
               </span>
-              <span className="font-bold" style={{ color: 'var(--ink)' }}>
-                “{parsed.title}”
-              </span>
+              <strong style={{ color: 'var(--text)' }}>“{parsed.title}”</strong>
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 font-semibold"
-                style={{ border: '1px solid var(--rule)' }}
+                className="inline-flex items-center gap-1 px-2 py-0.5 font-medium"
+                style={{
+                  borderRadius: 5,
+                  backgroundColor: 'var(--surface)',
+                  border: '1px solid var(--line)'
+                }}
               >
                 <DynamicIcon name={parsed.category?.icon} className="w-3.5 h-3.5" />
                 {parsed.category?.name}
               </span>
-              <span className="font-medium" style={{ color: 'var(--mute)' }}>
-                Ví: {parsed.wallet?.name} • {formatDateVN(parsed.tx_date)}
+              <span style={{ color: 'var(--muted)' }}>
+                Ví: {parsed.wallet?.name} · {formatDateVN(parsed.tx_date)}
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div>
               {parsed.isValid ? (
                 <span
-                  className="text-sm font-extrabold font-mono-num"
-                  style={{ color: 'var(--positive)' }}
+                  className="font-mono-num font-bold text-sm"
+                  style={{ color: 'var(--green)' }}
                 >
-                  {formatVND(parsed.amount)} [Nhấn Enter]
+                  {formatVND(parsed.amount)} (Nhấn Enter)
                 </span>
               ) : (
-                <span className="font-semibold" style={{ color: 'var(--accent)' }}>
+                <span className="font-semibold" style={{ color: 'var(--primary-dark)' }}>
                   {activeHint || 'Gõ thêm số tiền thực tế của bạn (VD: 45k, 200k, 1.5tr)'}
                 </span>
               )}
@@ -176,13 +160,12 @@ export function QuickAddBar({
         )}
       </form>
 
-      {/* Everyday Life Suggestion Tags (Clean typographic tags without emoji clutter) */}
-      <div className="mt-3.5 flex items-center gap-2 overflow-x-auto pb-1">
+      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
         <span
-          className="text-xs font-mono-num font-bold shrink-0"
-          style={{ color: 'var(--mute)' }}
+          className="font-mono-num text-[11px] shrink-0 mr-1"
+          style={{ color: 'var(--muted)' }}
         >
-          GỢI Ý MỤC THIẾT YẾU:
+          GỢI Ý:
         </span>
         {quickTemplates.map((tpl, idx) => {
           const cleanLabel = tpl.label.replace(/^[^\p{L}\p{N}]+\s*/u, '');
@@ -191,27 +174,28 @@ export function QuickAddBar({
               key={idx}
               type="button"
               onClick={() => handleSuggestionClick(tpl)}
+              className="px-2.5 py-1 text-xs font-medium shrink-0 cursor-pointer transition"
               style={{
-                border: '1px solid var(--rule)',
+                borderRadius: 6,
+                border: '1px solid var(--line)',
                 backgroundColor: 'var(--bg)',
-                color: 'var(--ink)'
+                color: 'var(--text)'
               }}
-              className="px-3 py-1 text-xs font-semibold hover:opacity-80 transition shrink-0 cursor-pointer"
             >
-              + {cleanLabel}
+              {cleanLabel}
             </button>
           );
         })}
         {justAdded && (
           <span
-            className="inline-flex items-center gap-1 text-xs font-bold ml-auto shrink-0"
-            style={{ color: 'var(--positive)' }}
+            className="inline-flex items-center gap-1 text-xs font-semibold ml-auto shrink-0"
+            style={{ color: 'var(--green)' }}
           >
             <Check className="w-3.5 h-3.5" />
-            Đã ghi sổ: {justAdded}
+            Đã lưu: {justAdded}
           </span>
         )}
       </div>
-    </section>
+    </div>
   );
 }

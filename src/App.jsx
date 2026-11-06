@@ -9,13 +9,9 @@ import {
   Plus,
   Eye,
   EyeOff,
-  Moon,
-  Sun,
   Search,
   Download,
   RefreshCw,
-  ArrowUpRight,
-  ArrowDownRight,
   ArrowLeftRight,
   Calendar,
   CheckCircle2,
@@ -23,13 +19,13 @@ import {
   Edit3,
   Copy,
   Database,
-  Sparkles,
-  ShieldCheck,
-  Wallet,
   RotateCcw,
   Undo2,
   ListFilter,
-  Palette
+  Menu,
+  X,
+  ChevronDown,
+  ArrowRight
 } from 'lucide-react';
 import {
   INITIAL_WALLETS,
@@ -64,22 +60,16 @@ import {
   MonthComparisonModule,
   LifeOptimizationToolkit
 } from './components/SmartLifePlanner.jsx';
-import { Mascot, MASCOT_CATALOG, PageMascotCompanion } from './components/PageMascot.jsx';
-import {
-  HUASHU_DIRECTIONS,
-  HuashuTweaksPanel,
-  HuashuStudioModal
-} from './components/HuashuStyleStudio.jsx';
+import { Mascot, MASCOT_CATALOG } from './components/PageMascot.jsx';
 
 const STORAGE_KEY = 'finflow_vn_state_v2_clean';
-const HUASHU_STORAGE_KEY = 'finflow_huashu_design_v4';
 
 const NAV_TABS = [
-  { id: 'dashboard', code: '01', label: 'TỔNG QUAN SỔ CÁI', shortLabel: 'Tổng quan', icon: LayoutDashboard },
-  { id: 'transactions', code: '02', label: 'NHẬT KÝ GIAO DỊCH', shortLabel: 'Giao dịch', icon: ReceiptText },
-  { id: 'budgets', code: '03', label: 'PHÂN BỔ & NGÂN SÁCH', shortLabel: 'Ngân sách', icon: PieChart },
-  { id: 'goals', code: '04', label: 'TÍCH LŨY & ĐỊNH KỲ', shortLabel: 'Tích lũy', icon: PiggyBank },
-  { id: 'analytics', code: '05', label: 'SO SÁNH & TỐI ƯU SỐNG', shortLabel: 'Tối ưu', icon: BarChart3 }
+  { id: 'dashboard', code: '01', label: 'Tổng quan', shortLabel: 'Tổng quan', icon: LayoutDashboard },
+  { id: 'transactions', code: '02', label: 'Sổ giao dịch', shortLabel: 'Giao dịch', icon: ReceiptText },
+  { id: 'budgets', code: '03', label: 'Phân bổ & Ngân sách', shortLabel: 'Ngân sách', icon: PieChart },
+  { id: 'goals', code: '04', label: 'Tích lũy & Định kỳ', shortLabel: 'Tích lũy', icon: PiggyBank },
+  { id: 'analytics', code: '05', label: 'So sánh & Tối ưu', shortLabel: 'Tối ưu', icon: BarChart3 }
 ];
 
 const MONTH_OPTIONS = [
@@ -95,76 +85,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedMonth, setSelectedMonth] = useState('2026-11');
   const [hideBalance, setHideBalance] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [utilityMenuOpen, setUtilityMenuOpen] = useState(false);
 
-  // Huashu Design System v3.2 + Page Mascot Interactive States
-  const [huashuConfig, setHuashuConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem(HUASHU_STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch {
-      // ignore
-    }
-    return {
-      direction: 'feltron',
-      font: 'modern',
-      radius: 'sharp',
-      texture: 'clean'
-    };
-  });
-  const [mascotId, setMascotId] = useState(() => {
-    try {
-      return localStorage.getItem('finflow_page_mascot_id_v4') || 'fox-riso';
-    } catch {
-      return 'fox-riso';
-    }
-  });
+  // Locked Single Mascot ('fox-riso' - Cáo Riso Tài Chính matching Terracotta Warm Paper theme)
+  const mascotData = MASCOT_CATALOG[0];
   const [mascotReaction, setMascotReaction] = useState(null);
   const [mascotSpeech, setMascotSpeech] = useState('');
-  const [huashuStudioOpen, setHuashuStudioOpen] = useState(false);
 
   const triggerMascotReaction = useCallback((type = 'sparkle', speech = '', duration = 1150) => {
     setMascotReaction({ type, duration, ts: Date.now() });
     if (speech) setMascotSpeech(speech);
-  }, []);
-
-  const handleApplyHuashuDirection = useCallback(
-    (dir) => {
-      const next = {
-        direction: dir.id,
-        font: dir.font,
-        radius: dir.radius,
-        texture: dir.texture
-      };
-      setHuashuConfig(next);
-      setDarkMode(Boolean(dir.darkMode));
-      if (dir.recommendedMascot) {
-        setMascotId(dir.recommendedMascot);
-        try {
-          localStorage.setItem('finflow_page_mascot_id_v4', dir.recommendedMascot);
-        } catch {
-          // ignore
-        }
-      }
-      triggerMascotReaction(
-        'sparkle',
-        `Đã chuyển sang phong cách "${dir.name}" (${dir.subtitle})!`
-      );
-    },
-    [triggerMascotReaction]
-  );
-
-  const handleUpdateHuashuConfig = useCallback((partial) => {
-    setHuashuConfig((prev) => ({ ...prev, ...partial }));
-  }, []);
-
-  const handleSelectMascot = useCallback((id) => {
-    setMascotId(id);
-    try {
-      localStorage.setItem('finflow_page_mascot_id_v4', id);
-    } catch {
-      // ignore
-    }
   }, []);
 
   // Clean Initial State (0 transactions, 0 balances, essential wallets & categories pre-configured)
@@ -245,26 +176,8 @@ export default function App() {
   }, [toast]);
 
   useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [darkMode]);
-
-  // Sync Huashu Design attributes to <html> element and localStorage
-  useEffect(() => {
-    const root = document.documentElement;
-    root.setAttribute('data-huashu-theme', huashuConfig.direction || 'feltron');
-    root.setAttribute('data-huashu-font', huashuConfig.font || 'modern');
-    root.setAttribute('data-huashu-radius', huashuConfig.radius || 'sharp');
-    root.setAttribute('data-huashu-texture', huashuConfig.texture || 'clean');
-    try {
-      localStorage.setItem(HUASHU_STORAGE_KEY, JSON.stringify(huashuConfig));
-    } catch {
-      // ignore
-    }
-  }, [huashuConfig]);
+    document.documentElement.classList.remove('dark');
+  }, []);
 
   // Global Keyboard Shortcuts (N = New Transaction, H = Hide/Show Balance)
   useEffect(() => {
@@ -794,373 +707,312 @@ export default function App() {
   };
 
   return (
-    <div className="hs-page pb-24">
-      <div className="w-full px-3 sm:px-6 lg:px-10 pt-3 sm:pt-5">
-        {/* ====================================================================
-            ROW 1: HUASHU EDITORIAL MASTHEAD (01-personal-annual-report style)
-            ==================================================================== */}
-        <header
-          style={{ borderBottom: '3px solid var(--rule-strong)' }}
-          className="pb-3.5 sm:pb-4 flex flex-col xl:flex-row xl:items-end justify-between gap-3.5"
-        >
-          <div className="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
-            {/* Inline Page-Mascot watching cursor right in Masthead */}
-            <div
-              className="p-1 shrink-0"
-              style={{
-                backgroundColor: 'var(--surface)',
-                border: '2px solid var(--rule-strong)'
-              }}
-            >
-              <Mascot
-                directions={
-                  (MASCOT_CATALOG.find((m) => m.id === mascotId) || MASCOT_CATALOG[0]).directions
-                }
-                reactions={
-                  (MASCOT_CATALOG.find((m) => m.id === mascotId) || MASCOT_CATALOG[0]).reactions
-                }
-                size={58}
-                externalReaction={mascotReaction}
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div
-                className="font-mono-num text-[10px] sm:text-[11px] font-bold tracking-widest uppercase truncate"
-                style={{ color: 'var(--mute)' }}
-              >
-                FINFLOW VN · SỔ CÁI & NIÊN GIÁM TÀI CHÍNH CÁ NHÂN · HUASHU DESIGN EDITION
-              </div>
-              <h1 className="hs-display text-xl sm:text-3xl lg:text-4xl font-black tracking-tight mt-0.5 leading-tight">
-                Sổ Cái Thu Chi <span style={{ color: 'var(--accent)' }}>/</span>{' '}
-                <span>{selectedMonth === 'ALL' ? 'Toàn Kỳ' : selectedMonth}</span>
-              </h1>
-              {/* Inline Mascot Companion Status & Switcher */}
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                <span
-                  className="font-mono-num text-[10px] font-bold px-1.5 py-0.5"
-                  style={{ backgroundColor: 'var(--accent)', color: 'var(--accent-fg)' }}
-                >
-                  {(MASCOT_CATALOG.find((m) => m.id === mascotId) || MASCOT_CATALOG[0]).name}
-                </span>
-                <span className="truncate max-w-md" style={{ color: 'var(--mute)' }}>
-                  {mascotSpeech ||
-                    (MASCOT_CATALOG.find((m) => m.id === mascotId) || MASCOT_CATALOG[0]).persona}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setHuashuStudioOpen(true)}
-                  className="font-bold underline cursor-pointer shrink-0"
-                  style={{ color: 'var(--ink)' }}
-                >
-                  [Đổi linh vật]
-                </button>
-              </div>
-            </div>
-          </div>
+    <div className="app-shell">
+      {/* ====================================================================
+          GLOBAL HEADER & MENU (Modeled directly on ngoctam169/iloveyou Header.jsx)
+          ==================================================================== */}
+      <header className="site-header editorial-global-header">
+        <div className="header-inner">
+          {/* Left: Brand Wordmark */}
+          <button
+            type="button"
+            className="brand"
+            onClick={() => {
+              setActiveTab('dashboard');
+              setMobileMenuOpen(false);
+            }}
+          >
+            <span className="brand-mark">FF</span>
+            <span>FinFlow VN</span>
+          </button>
 
-          {/* Masthead Controls: 4 Huashu Specimen Switchers + Period + Actions */}
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-between xl:justify-end">
+          {/* Center: Clean Editorial Desktop Navigation + Dropdown Popover */}
+          <nav className="desktop-nav simplified-desktop-nav" aria-label="Điều hướng chính">
+            {NAV_TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setUtilityMenuOpen(false);
+                  }}
+                  className={`nav-link ${active ? 'active' : ''}`}
+                >
+                  <span>{tab.label}</span>
+                  {tab.id === 'transactions' && monthTransactions.length > 0 && (
+                    <span className="pill" style={{ padding: '2px 7px', fontSize: '0.72rem' }}>
+                      {monthTransactions.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            {/* Popover Menu (like 'Ôn luyện ▾' in ngoctam169/iloveyou) */}
             <div
-              className="flex items-center overflow-x-auto max-w-full"
-              style={{ border: '1px solid var(--rule-strong)' }}
+              className="nav-dropdown"
+              onMouseEnter={() => setUtilityMenuOpen(true)}
+              onMouseLeave={() => setUtilityMenuOpen(false)}
             >
-              {HUASHU_DIRECTIONS.map((dir) => {
-                const active = huashuConfig.direction === dir.id;
-                return (
+              <button
+                type="button"
+                className={`nav-link dropdown-trigger ${utilityMenuOpen ? 'active' : ''}`}
+                onClick={() => setUtilityMenuOpen((prev) => !prev)}
+              >
+                <span>Tiện ích</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {utilityMenuOpen && (
+                <div className="nav-popover">
                   <button
-                    key={dir.id}
                     type="button"
-                    onClick={() => handleApplyHuashuDirection(dir)}
-                    className="px-2.5 py-1.5 text-xs font-bold cursor-pointer transition whitespace-nowrap shrink-0"
-                    style={{
-                      backgroundColor: active ? 'var(--ink)' : 'var(--surface)',
-                      color: active ? 'var(--bg)' : 'var(--ink)',
-                      borderRight: '1px solid var(--rule)'
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
+                      setEditingTx(null);
+                      setTxModalOpen(true);
                     }}
                   >
-                    {dir.name}
+                    <strong>Ghi thu / chi mới [Phím N]</strong>
+                    <small>Mở biểu mẫu ghi chép chi tiết kèm tag & ghi chú</small>
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
+                      setEditingWallet(null);
+                      setWalletModalMode('transfer');
+                      setWalletModalOpen(true);
+                    }}
+                  >
+                    <strong>Chuyển tiền giữa các ví</strong>
+                    <small>Luân chuyển số dư giữa Tiền mặt, Ngân hàng & Ví điện tử</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
+                      setEditingWallet(null);
+                      setWalletModalMode('wallet');
+                      setWalletModalOpen(true);
+                    }}
+                  >
+                    <strong>Thêm ví / tài khoản mới</strong>
+                    <small>Tạo thêm nguồn tiền hoặc cập nhật số dư thực tế</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
+                      handleExportCSV();
+                    }}
+                  >
+                    <strong>Xuất sổ giao dịch CSV</strong>
+                    <small>Tải về bảng tính Excel của kỳ đang chọn</small>
+                  </button>
+                  <button
+                    type="button"
+                    className="popover-link"
+                    onClick={() => {
+                      setUtilityMenuOpen(false);
+                      handleResetClean();
+                    }}
+                  >
+                    <strong>Làm mới dữ liệu về 0 ₫</strong>
+                    <small>Xóa các giao dịch đã nhập, giữ nguyên danh mục thiết yếu</small>
+                  </button>
+                </div>
+              )}
             </div>
+          </nav>
 
-            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <select
-                value={selectedMonth}
-                onChange={(e) => {
-                  setSelectedMonth(e.target.value);
-                  setSelectedDay(null);
-                }}
-                className="px-2.5 py-1.5 text-xs font-bold font-mono-num cursor-pointer focus:outline-none"
-                style={{
-                  backgroundColor: 'var(--surface)',
-                  color: 'var(--ink)',
-                  border: '1px solid var(--rule-strong)'
-                }}
-              >
-                {MONTH_OPTIONS.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
+          {/* Right: Period Selector, Hide Balance Icon, Primary CTA, Mobile Toggle */}
+          <div className="header-actions">
+            <select
+              value={selectedMonth}
+              onChange={(e) => {
+                setSelectedMonth(e.target.value);
+                setSelectedDay(null);
+              }}
+              aria-label="Chọn kỳ sổ cái"
+              className="px-2.5 py-1.5 text-xs font-semibold font-mono-num cursor-pointer focus:outline-none"
+              style={{
+                height: '38px',
+                borderRadius: '7px',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--text)',
+                border: '1px solid var(--line)'
+              }}
+            >
+              {MONTH_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
 
+            <button
+              type="button"
+              onClick={() => setHideBalance((prev) => !prev)}
+              title="Ẩn/Hiện số tiền [Phím H]"
+              aria-label="Ẩn hoặc hiện số dư"
+              className="icon-btn"
+            >
+              {hideBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setEditingTx(null);
+                setTxModalOpen(true);
+              }}
+              className="btn primary small hidden sm:inline-flex"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Ghi chi tiêu</span>
+            </button>
+
+            <button
+              type="button"
+              className="icon-btn mobile-menu-toggle"
+              aria-label="Mở menu điều hướng"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Drawer Menu (modeled on simplified-mobile-menu in ngoctam169/iloveyou) */}
+        {mobileMenuOpen && (
+          <div className="mobile-menu simplified-mobile-menu">
+            <div className="mobile-menu-group">
+              <span className="mobile-group-title">Mục điều hướng chính</span>
+              {NAV_TABS.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`mobile-link ${activeTab === tab.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  {tab.code} · {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="mobile-menu-group">
+              <span className="mobile-group-title">Thao tác nhanh</span>
               <button
                 type="button"
-                onClick={() => setHideBalance((prev) => !prev)}
-                title="Ẩn/Hiện số tiền [Phím H]"
-                className="hs-btn-outline px-2.5 py-1.5 text-xs inline-flex items-center gap-1 cursor-pointer"
-              >
-                {hideBalance ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                <span className="hidden sm:inline">{hideBalance ? 'Hiện số' : 'Ẩn số'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setHuashuStudioOpen(true)}
-                className="hs-btn-outline px-2.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
-              >
-                <Palette className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Linh vật & Mẫu</span>
-              </button>
-
-              <button
-                type="button"
+                className="mobile-link"
                 onClick={() => {
+                  setMobileMenuOpen(false);
                   setEditingTx(null);
                   setTxModalOpen(true);
                 }}
-                className="hs-btn-primary px-3.5 py-1.5 text-xs inline-flex items-center gap-1.5 cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Ghi Giao Dịch [N]</span>
+                + Ghi nhận khoản thu / chi mới
+              </button>
+              <button
+                type="button"
+                className="mobile-link"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setEditingWallet(null);
+                  setWalletModalMode('transfer');
+                  setWalletModalOpen(true);
+                }}
+              >
+                ⇄ Chuyển tiền giữa các ví
               </button>
             </div>
           </div>
-        </header>
+        )}
+      </header>
 
-        {/* ====================================================================
-            ROW 2: STRUCTURAL INDEX NAVIGATION BAR (01-editorial-brutalism style)
-            ==================================================================== */}
-        <nav
-          className="flex items-stretch overflow-x-auto whitespace-nowrap"
-          style={{
-            borderBottom: '1px solid var(--rule-strong)',
-            backgroundColor: 'var(--surface)'
-          }}
-        >
-          {NAV_TABS.map((tab) => {
-            const active = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className="px-3.5 sm:px-6 py-3 text-xs font-extrabold tracking-wide flex items-center gap-2 cursor-pointer transition shrink-0"
-                style={{
-                  borderRight: '1px solid var(--rule-strong)',
-                  backgroundColor: active ? 'var(--ink)' : 'transparent',
-                  color: active ? 'var(--bg)' : 'var(--ink)'
-                }}
-              >
-                <span
-                  className="font-mono-num"
-                  style={{ color: active ? 'var(--accent)' : 'var(--accent)' }}
-                >
-                  {tab.code}
-                </span>
-                <span>{tab.label}</span>
-                {tab.id === 'transactions' && (
-                  <span
-                    className="font-mono-num text-[11px] px-1.5 py-0.2"
+      {/* ====================================================================
+          MAIN CONTENT AREA
+          ==================================================================== */}
+      <main className="main-content">
+        {/* ==================== TAB 1: DASHBOARD (TỔNG QUAN) ==================== */}
+        {activeTab === 'dashboard' && (
+          <div className="home-page">
+            {/* 1. PRODUCT HERO SPLIT (Modeled on ngoctam169/iloveyou Home.jsx) */}
+            <section className="product-hero section-shell">
+              <div className="hero-copy">
+                <div className="eyebrow">
+                  PERSONAL FINANCE · SỔ CÁI & PHÂN BỔ CHI TIÊU CÁ NHÂN
+                </div>
+                <h1>
+                  Quản lý dòng tiền mỗi tháng <em>thật nhẹ nhàng.</em>
+                </h1>
+                <p>
+                  Khởi đầu hoàn toàn sạch 0 ₫, tích hợp sẵn các ví và danh mục sinh hoạt thiết yếu.
+                  Gõ nhanh một dòng để ghi sổ hoặc nhập thu nhập để phân bổ tự động từng khoản.
+                </p>
+
+                {/* Embedded Quick Command Bar */}
+                <div className="mt-5">
+                  <QuickAddBar
+                    categories={categories}
+                    wallets={wallets}
+                    quickTemplates={quickTemplates}
+                    onQuickSubmit={handleSaveTransaction}
+                    onOpenFullModal={(prefill = null) => {
+                      setEditingTx(prefill);
+                      setTxModalOpen(true);
+                    }}
+                  />
+                </div>
+
+                <div className="trust-row">
+                  <span>✓ Khởi đầu sạch 0 ₫</span>
+                  <span>✓ Gợi ý sẵn các khoản thiết yếu</span>
+                  <span>✓ Đồng bộ Cloud PostgreSQL ({isSyncing ? 'Đang tải...' : 'Sẵn sàng'})</span>
+                </div>
+              </div>
+
+              {/* Right Index Rail: Huashu Wallet Index + Interactive Mascot */}
+              <aside className="huashu-learning-index" aria-label="Chỉ mục nguồn tiền & ví cá nhân">
+                <div className="huashu-index-head flex items-center justify-between gap-3">
+                  <div>
+                    <span>
+                      Wallet index · {selectedMonth === 'ALL' ? 'Toàn kỳ' : selectedMonth}
+                    </span>
+                    <strong className="block mt-0.5">Nguồn tiền & Ví cá nhân</strong>
+                    <small className="block text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                      {mascotSpeech || 'Chạm vào từng ví bên dưới để nhập số dư thực tế của bạn'}
+                    </small>
+                  </div>
+                  <div
+                    className="p-1.5 shrink-0"
+                    title="Cáo Riso Tài Chính — Di chuột để tương tác"
                     style={{
-                      border: '1px solid currentColor'
+                      backgroundColor: 'var(--surface)',
+                      border: '1px solid var(--line)',
+                      borderRadius: '8px'
                     }}
                   >
-                    {monthTransactions.length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-
-          <div className="ml-auto px-4 py-2.5 hidden lg:flex items-center gap-3 text-xs font-mono-num shrink-0">
-            <span className="inline-flex items-center gap-1.5 font-bold" style={{ color: 'var(--positive)' }}>
-              <span
-                className="w-2 h-2 inline-block"
-                style={{ backgroundColor: 'var(--positive)' }}
-              />
-              POSTGRESQL AP-SOUTHEAST-1
-            </span>
-            <button
-              type="button"
-              onClick={fetchCloudState}
-              className="underline font-semibold cursor-pointer"
-              style={{ color: 'var(--mute)' }}
-            >
-              {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ'}
-            </button>
-          </div>
-        </nav>
-
-        {/* MAIN WORKSPACE CONTAINER */}
-        <main className="py-5 space-y-6">
-          {/* ==================== TAB 1: DASHBOARD (TỔNG QUAN SỔ CÁI) ==================== */}
-          {activeTab === 'dashboard' && (
-            <>
-              {/* 1. FELTRON 4-COLUMN GIANT NUMBER STRIP (Full-Width Responsive) */}
-              <section className="hs-kpi-grid">
-                {/* Col 1: Total Net Worth */}
-                <div className="hs-kpi-cell">
-                  <div
-                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
-                    style={{ color: 'var(--mute)' }}
-                  >
-                    01 / TỔNG SỐ DƯ 4 VÍ NGUỒN TIỀN
-                  </div>
-                  <div
-                    className="hs-display font-mono-num text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mt-2 leading-none"
-                    style={{ color: 'var(--accent)' }}
-                  >
-                    {formatVND(totalNetWorth, hideBalance)}
-                  </div>
-                  <div className="text-xs mt-3 flex items-center justify-between" style={{ color: 'var(--mute)' }}>
-                    <span>Chênh lệch thu - chi kỳ này:</span>
-                    <strong className="font-mono-num" style={{ color: 'var(--ink)' }}>
-                      {monthNetCashflow >= 0 ? '+' : ''}
-                      {formatVND(monthNetCashflow, hideBalance)}
-                    </strong>
+                    <Mascot
+                      directions={mascotData.directions}
+                      reactions={mascotData.reactions}
+                      size={52}
+                      externalReaction={mascotReaction}
+                    />
                   </div>
                 </div>
 
-                {/* Col 2: Income */}
-                <div className="hs-kpi-cell">
-                  <div
-                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
-                    style={{ color: 'var(--mute)' }}
-                  >
-                    02 / TỔNG THU NHẬP KỲ NÀY
-                  </div>
-                  <div
-                    className="hs-display font-mono-num text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mt-2 leading-none"
-                    style={{ color: 'var(--positive)' }}
-                  >
-                    +{formatVND(monthIncome, hideBalance)}
-                  </div>
-                  <div className="text-xs mt-3 flex items-center justify-between" style={{ color: 'var(--mute)' }}>
-                    <span>Tỷ lệ tích lũy ròng:</span>
-                    <strong className="font-mono-num" style={{ color: 'var(--ink)' }}>
-                      {savingsRate.toFixed(1)}%
-                    </strong>
-                  </div>
-                </div>
-
-                {/* Col 3: Expense */}
-                <div className="hs-kpi-cell">
-                  <div
-                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
-                    style={{ color: 'var(--mute)' }}
-                  >
-                    03 / TỔNG CHI TIÊU KỲ NÀY
-                  </div>
-                  <div
-                    className="hs-display font-mono-num text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mt-2 leading-none"
-                    style={{ color: 'var(--negative)' }}
-                  >
-                    -{formatVND(monthExpense, hideBalance)}
-                  </div>
-                  <div className="text-xs mt-3 flex items-center justify-between" style={{ color: 'var(--mute)' }}>
-                    <span>So với ngân sách tháng:</span>
-                    <strong className="font-mono-num" style={{ color: 'var(--ink)' }}>
-                      {totalMonthlyBudget > 0
-                        ? `${((monthExpense / totalMonthlyBudget) * 100).toFixed(1)}%`
-                        : 'Chưa đặt hạn mức'}
-                    </strong>
-                  </div>
-                </div>
-
-                {/* Col 4: Safe Daily Spend */}
-                <div className="hs-kpi-cell">
-                  <div
-                    className="font-mono-num text-xs font-bold uppercase tracking-wider"
-                    style={{ color: 'var(--mute)' }}
-                  >
-                    04 / ĐỊNH MỨC AN TOÀN / NGÀY
-                  </div>
-                  <div
-                    className="hs-display font-mono-num text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mt-2 leading-none"
-                    style={{ color: 'var(--slate)' }}
-                  >
-                    {totalMonthlyBudget > 0 ? formatVND(safeDailySpend, hideBalance) : '—'}
-                  </div>
-                  <div className="text-xs mt-3 flex items-center justify-between" style={{ color: 'var(--mute)' }}>
-                    <span>Ngân sách còn dư:</span>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab('budgets')}
-                      className="underline font-bold cursor-pointer"
-                      style={{ color: 'var(--ink)' }}
-                    >
-                      {totalMonthlyBudget > 0
-                        ? formatCompactVND(budgetRemaining, hideBalance)
-                        : 'Thiết lập ngay'}
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              {/* 1B. FULL-WIDTH 4-WALLET STRIP */}
-              <section>
-                <div
-                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"
-                  style={{
-                    backgroundColor: 'var(--surface-alt)',
-                    borderTop: '2px solid var(--rule-strong)',
-                    borderLeft: '1px solid var(--rule-strong)',
-                    borderRight: '1px solid var(--rule-strong)'
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="font-mono-num text-xs font-extrabold"
-                      style={{ color: 'var(--accent)', letterSpacing: '0.06em' }}
-                    >
-                      05 / NGUỒN TIỀN & VÍ CÁ NHÂN ({wallets.length} VÍ THIẾT YẾU)
-                    </span>
-                    <span className="text-xs hidden md:inline" style={{ color: 'var(--mute)' }}>
-                      — Chạm vào từng ví để nhập số dư thực tế của bạn
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingWallet(null);
-                        setWalletModalMode('transfer');
-                        setWalletModalOpen(true);
-                      }}
-                      className="hs-btn-outline px-3 py-1 text-xs inline-flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <ArrowLeftRight className="w-3.5 h-3.5" />
-                      <span>Chuyển tiền giữa các ví</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingWallet(null);
-                        setWalletModalMode('wallet');
-                        setWalletModalOpen(true);
-                      }}
-                      className="hs-btn-primary px-3 py-1 text-xs inline-flex items-center gap-1 cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Thêm ví mới</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="hs-wallet-grid">
-                  {wallets.map((w) => (
+                <div className="huashu-index-list">
+                  {wallets.map((w, idx) => (
                     <button
                       key={w.id}
                       type="button"
@@ -1169,55 +1021,100 @@ export default function App() {
                         setWalletModalMode('wallet');
                         setWalletModalOpen(true);
                       }}
-                      className="hs-wallet-cell text-left cursor-pointer flex items-center justify-between gap-3"
+                      className="huashu-index-row"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div
-                          className="w-9 h-9 flex items-center justify-center shrink-0"
-                          style={{
-                            border: '1px solid var(--rule-strong)',
-                            backgroundColor: 'var(--bg)',
-                            color: 'var(--ink)'
-                          }}
-                        >
-                          <DynamicIcon name={w.icon} className="w-4 h-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-xs font-extrabold truncate">{w.name}</div>
-                          <div className="text-[11px] truncate" style={{ color: 'var(--mute)' }}>
-                            {w.balance === 0 ? 'Chạm để nhập số dư' : w.account_number}
-                          </div>
-                        </div>
+                      <span>{String(idx + 1).padStart(2, '0')}</span>
+                      <div className="min-w-0">
+                        <b className="truncate">{w.name}</b>
+                        <small className="truncate">
+                          {w.balance === 0 ? 'Chạm để nhập số dư ban đầu' : w.account_number}
+                        </small>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="text-sm sm:text-base font-black font-mono-num">
-                          {formatVND(w.balance, hideBalance)}
-                        </div>
-                        <span
-                          className="text-[10px] font-mono-num font-bold underline"
-                          style={{ color: 'var(--accent)' }}
-                        >
+                        <b className="font-mono-num">{formatVND(w.balance, hideBalance)}</b>
+                        <small style={{ color: 'var(--primary)' }}>
                           {w.balance === 0 ? '+ Nhập số dư' : 'Cập nhật'}
-                        </span>
+                        </small>
                       </div>
                     </button>
                   ))}
                 </div>
-              </section>
 
-              {/* 2. NATURAL LANGUAGE COMMAND BAR */}
-              <QuickAddBar
-                categories={categories}
-                wallets={wallets}
-                quickTemplates={quickTemplates}
-                onQuickSubmit={handleSaveTransaction}
-                onOpenFullModal={(prefill = null) => {
-                  setEditingTx(prefill);
-                  setTxModalOpen(true);
-                }}
-              />
+                <div className="huashu-exam-rail">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingWallet(null);
+                      setWalletModalMode('transfer');
+                      setWalletModalOpen(true);
+                    }}
+                  >
+                    <span>CHUYỂN KHOẢN NỘI BỘ</span>
+                    <strong>⇄ Luân chuyển giữa các ví</strong>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingWallet(null);
+                      setWalletModalMode('wallet');
+                      setWalletModalOpen(true);
+                    }}
+                  >
+                    <span>THÊM NGUỒN TIỀN</span>
+                    <strong>+ Tạo ví hoặc tài khoản mới</strong>
+                  </button>
+                </div>
+              </aside>
+            </section>
 
-              {/* 3. SMART MONTHLY INCOME ALLOCATOR */}
+            {/* 2. STATS STRIP (4-Column Full-Width Strip modeled on ngoctam169/iloveyou) */}
+            <section className="stats-strip" aria-label="Chỉ số tài chính tổng quan">
+              <div className="stats-inner">
+                <div>
+                  <strong>{formatVND(totalNetWorth, hideBalance)}</strong>
+                  <span>Tổng số dư {wallets.length} ví nguồn tiền</span>
+                  <span className="stat-sub font-mono-num">
+                    Chênh lệch thu - chi: {monthNetCashflow >= 0 ? '+' : ''}
+                    {formatVND(monthNetCashflow, hideBalance)}
+                  </span>
+                </div>
+                <div>
+                  <strong style={{ color: 'var(--green)' }}>
+                    +{formatVND(monthIncome, hideBalance)}
+                  </strong>
+                  <span>Tổng thu nhập kỳ này</span>
+                  <span className="stat-sub font-mono-num">
+                    Tỷ lệ tích lũy ròng: {savingsRate.toFixed(1)}%
+                  </span>
+                </div>
+                <div>
+                  <strong style={{ color: 'var(--red)' }}>
+                    -{formatVND(monthExpense, hideBalance)}
+                  </strong>
+                  <span>Tổng chi tiêu kỳ này</span>
+                  <span className="stat-sub font-mono-num">
+                    {totalMonthlyBudget > 0
+                      ? `Đã dùng ${((monthExpense / totalMonthlyBudget) * 100).toFixed(1)}% ngân sách`
+                      : 'Chưa đặt hạn mức ngân sách'}
+                  </span>
+                </div>
+                <div>
+                  <strong style={{ color: 'var(--blue)' }}>
+                    {totalMonthlyBudget > 0 ? formatVND(safeDailySpend, hideBalance) : '—'}
+                  </strong>
+                  <span>Định mức chi an toàn / ngày</span>
+                  <span className="stat-sub">
+                    {totalMonthlyBudget > 0
+                      ? `Còn dư ${formatCompactVND(budgetRemaining, hideBalance)} trong ngân sách`
+                      : 'Nhập thu nhập bên dưới để tự động phân bổ'}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            {/* 3. MAIN DASHBOARD SECTIONS (.section-shell) */}
+            <div className="section-shell py-8 space-y-6">
+              {/* Smart Monthly Income Allocator */}
               {showDashboardAllocator && (
                 <SmartIncomeAllocator
                   categories={categories}
@@ -1238,17 +1135,14 @@ export default function App() {
                 />
               )}
 
-              {/* 4. ASYMMETRIC EDITORIAL LEDGER COLUMNS (Exposed 1px rules) */}
-              <section className="hs-editorial-split">
-                {/* Left 7 Cols: Recent Transactions or Essential Category Starters */}
-                <div className="hs-split-left">
+              {/* 4. TWO-COLUMN EDITORIAL PANELS: Recent Transactions / Starters & Recurring Bills */}
+              <section className="grid-2">
+                {/* Left Panel: Recent Transactions or Essential Category Starters */}
+                <div className="panel">
                   <div className="flex items-baseline justify-between mb-4">
                     <div>
-                      <span
-                        className="font-mono-num text-xs font-extrabold"
-                        style={{ color: 'var(--accent)', letterSpacing: '0.08em' }}
-                      >
-                        MỤC 06
+                      <span className="eyebrow" style={{ marginBottom: '4px' }}>
+                        SỔ CÁI GIAO DỊCH
                       </span>
                       <h3 className="text-base sm:text-lg font-extrabold mt-0.5">
                         {monthTransactions.length > 0
@@ -1355,15 +1249,12 @@ export default function App() {
                 </div>
 
                 {/* Right: Recurring Bills or Life Bill Suggestions */}
-                <div className="hs-split-right flex flex-col justify-between">
+                <div className="panel flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <span
-                          className="font-mono-num text-xs font-extrabold"
-                          style={{ color: 'var(--accent)', letterSpacing: '0.08em' }}
-                        >
-                          MỤC 07
+                        <span className="eyebrow" style={{ marginBottom: '4px' }}>
+                          ĐỊNH KỲ HÀNG THÁNG
                         </span>
                         <h3 className="text-base sm:text-lg font-extrabold mt-0.5">
                           Hóa Đơn Định Kỳ Hàng Tháng
@@ -1463,7 +1354,7 @@ export default function App() {
 
               {/* 5. Charts Row: Cashflow Trend & Category Donut */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                <div className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
+                <div className="lg:col-span-7 panel">
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                     Biểu Đồ Dòng Tiền Thu - Chi Theo Ngày
                   </h3>
@@ -1474,11 +1365,11 @@ export default function App() {
                     transactions={transactions}
                     selectedMonth={selectedMonth}
                     hideBalance={hideBalance}
-                    darkMode={darkMode}
+                    darkMode={false}
                   />
                 </div>
 
-                <div className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
+                <div className="lg:col-span-5 panel">
                   <div className="mb-3">
                     <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                       Cơ Cấu Chi Tiêu Theo Danh Mục
@@ -1501,7 +1392,7 @@ export default function App() {
               </div>
 
               {/* 6. 50/30/20 Financial Rule Analyzer */}
-              <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 shadow-sm">
+              <div className="panel">
                 <div className="mb-4">
                   <h3 className="text-sm font-extrabold text-slate-900 dark:text-white">
                     Phân Tích Quy Tắc Tài Chính Cá Nhân 50 / 30 / 20
@@ -1517,12 +1408,13 @@ export default function App() {
                   hideBalance={hideBalance}
                 />
               </div>
-            </>
-          )}
+            </div>
+          </div>
+        )}
 
           {/* ==================== TAB 2: SỔ GIAO DỊCH (TRANSACTIONS LEDGER) ==================== */}
           {activeTab === 'transactions' && (
-            <div className="space-y-5">
+            <div className="section-shell py-7 space-y-5">
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 sm:p-5 shadow-sm space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="inline-flex p-1 rounded-2xl bg-slate-100 dark:bg-slate-800">
@@ -1788,7 +1680,7 @@ export default function App() {
 
           {/* ==================== TAB 3: NGÂN SÁCH (BUDGET PLANNER WITH SUGGESTIONS) ==================== */}
           {activeTab === 'budgets' && (
-            <div className="space-y-6">
+            <div className="section-shell py-7 space-y-6">
               {/* Smart Income Allocator at Top of Budget Tab */}
               <SmartIncomeAllocator
                 categories={categories}
@@ -1981,7 +1873,7 @@ export default function App() {
 
           {/* ==================== TAB 4: TÍCH LŨY & ĐỊNH KỲ (GOALS & RECURRING WITH SUGGESTIONS) ==================== */}
           {activeTab === 'goals' && (
-            <div className="space-y-6">
+            <div className="section-shell py-7 space-y-6">
               {/* Section A: Savings Jars / Financial Goals */}
               <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -2454,7 +2346,7 @@ export default function App() {
 
           {/* ==================== TAB 5: PHÂN TÍCH & CLOUD DB (ANALYTICS & DB) ==================== */}
           {activeTab === 'analytics' && (
-            <div className="space-y-6">
+            <div className="section-shell py-7 space-y-6">
               {/* 1. Month-over-Month Comparison Module */}
               <MonthComparisonModule
                 transactions={transactions}
@@ -2581,17 +2473,36 @@ export default function App() {
               </div>
             </div>
           )}
-        </main>
-      </div>
+      </main>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR */}
-      <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 px-1 py-1.5 flex items-center justify-around"
-        style={{
-          backgroundColor: 'var(--surface)',
-          borderTop: '2px solid var(--rule-strong)'
-        }}
-      >
+      {/* EDITORIAL FOOTER (Modeled on ngoctam169/iloveyou Footer.jsx) */}
+      <footer className="site-footer editorial-footer">
+        <div className="footer-inner simplified-footer-inner">
+          <div>
+            <div className="brand footer-brand">
+              <span className="brand-mark">FF</span>
+              <span>FinFlow VN</span>
+            </div>
+            <p className="footer-copy">
+              Sổ cái quản lý chi tiêu, phân bổ ngân sách tự động và tối ưu tài chính cá nhân mỗi ngày.
+            </p>
+          </div>
+          <div className="footer-links">
+            {NAV_TABS.map((t) => (
+              <button key={t.id} type="button" onClick={() => setActiveTab(t.id)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <div className="footer-meta">
+            <span>Cloud PostgreSQL (ap-southeast-1)</span>
+            <p>Phím tắt nhanh: [N] Ghi giao dịch mới · [H] Ẩn/Hiện số dư</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR (Modeled on simplified-bottom-nav in ngoctam169/iloveyou) */}
+      <nav className="mobile-bottom-nav simplified-bottom-nav" aria-label="Điều hướng di động">
         {NAV_TABS.map((tab) => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -2600,13 +2511,10 @@ export default function App() {
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center gap-0.5 px-2 py-1 text-[10px] font-extrabold transition cursor-pointer"
-              style={{
-                color: active ? 'var(--accent)' : 'var(--mute)'
-              }}
+              className={`bottom-nav-item ${active ? 'active' : ''}`}
             >
               <Icon className="w-4 h-4" />
-              <span className="truncate max-w-[68px]">{tab.shortLabel || tab.label}</span>
+              <span>{tab.shortLabel || tab.label}</span>
             </button>
           );
         })}
@@ -2639,29 +2547,6 @@ export default function App() {
         onSaveWallet={handleSaveWallet}
         onDeleteWallet={handleDeleteWallet}
         onTransfer={handleTransferWallets}
-      />
-
-      {/* HUASHU DESIGN STUDIO & PAGE MASCOT MODAL */}
-      <HuashuStudioModal
-        isOpen={huashuStudioOpen}
-        onClose={() => setHuashuStudioOpen(false)}
-        huashuConfig={huashuConfig}
-        onUpdateConfig={handleUpdateHuashuConfig}
-        onApplyDirection={handleApplyHuashuDirection}
-        mascotId={mascotId}
-        onSelectMascot={handleSelectMascot}
-        externalReaction={mascotReaction}
-        onTriggerReaction={(type) => triggerMascotReaction(type)}
-      />
-
-      {/* BOTTOM-RIGHT COLLAPSIBLE HUASHU TWEAKS PANEL */}
-      <HuashuTweaksPanel
-        huashuConfig={huashuConfig}
-        onUpdateConfig={handleUpdateHuashuConfig}
-        onApplyDirection={handleApplyHuashuDirection}
-        mascotId={mascotId}
-        onSelectMascot={handleSelectMascot}
-        onTriggerReaction={(type) => triggerMascotReaction(type)}
       />
 
       {/* FLOATING TOAST WITH UNDO */}
