@@ -25,7 +25,8 @@ export const TransactionModal = React.memo(function TransactionModal({
   categories,
   wallets,
   onSave,
-  onCreateCategory
+  onCreateCategory,
+  onDeferImpulse
 }) {
   const isEditing = Boolean(initialData?.id);
   const todayISO = getTodayISO();
@@ -62,6 +63,15 @@ export const TransactionModal = React.memo(function TransactionModal({
 
   const evaluatedAmount = evaluateAmountExpression(amountInput);
   const filteredCategories = categories.filter((c) => c.type === type);
+  const salaryRef = (() => {
+    try {
+      return evaluateAmountExpression(localStorage.getItem('finflow_salary_ref')) || 15000000;
+    } catch {
+      return 15000000;
+    }
+  })();
+  const hourlyRate = Math.max(1, Math.round(salaryRef / 176));
+  const workHoursCost = evaluatedAmount > 0 ? evaluatedAmount / hourlyRate : 0;
 
   const handleTypeSwitch = (newType) => {
     setType(newType);
@@ -203,6 +213,35 @@ export const TransactionModal = React.memo(function TransactionModal({
                 </button>
               ))}
             </div>
+
+            {type === 'expense' && evaluatedAmount > 0 && (
+              <div className="mt-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2 text-xs">
+                <span className="text-slate-500 dark:text-slate-300">
+                  ⏱️ Bằng{' '}
+                  <strong className="font-mono-num text-rose-600 dark:text-rose-400">
+                    {workHoursCost.toFixed(1)} giờ làm việc
+                  </strong>{' '}
+                  (~{(workHoursCost / 8).toFixed(1)} ngày công)
+                </span>
+                {onDeferImpulse && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const selectedCat = categories.find((c) => c.id === categoryId);
+                      onDeferImpulse({
+                        title: title.trim() || selectedCat?.name || 'Món định mua',
+                        amount: evaluatedAmount,
+                        hours: Number(workHoursCost.toFixed(1))
+                      });
+                      onClose();
+                    }}
+                    className="px-2 py-1 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold cursor-pointer shrink-0"
+                  >
+                    ⏳ Chờ 48h (Khoan mua)
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Category Grid (3-column compact, zero truncation) */}

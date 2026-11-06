@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Sparkles,
   Check,
@@ -881,6 +881,244 @@ export function MonthComparisonModule({
                         {formatVND(item.prevVal, hideBalance)}
                       </span>
                     </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * MODULE 2.5: Compact Impulse-Buy Guard (Chống mua bốc đồng & Giỏ chờ 48h)
+ */
+export function ImpulseBuyGuard({ hideBalance, onBuyForReal, onShowToast }) {
+  const [monthlySalary, setMonthlySalary] = useState(() => {
+    try {
+      return localStorage.getItem('finflow_salary_ref') || '15000000';
+    } catch {
+      return '15000000';
+    }
+  });
+  const [itemName, setItemName] = useState('');
+  const [itemPrice, setItemPrice] = useState('500000');
+  const [waitlist, setWaitlist] = useState(() => {
+    try {
+      const raw = localStorage.getItem('finflow_impulse_waitlist_v1');
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [totalSaved, setTotalSaved] = useState(() => {
+    try {
+      return Number(localStorage.getItem('finflow_impulse_saved_v1')) || 0;
+    } catch {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    const syncFromStorage = () => {
+      try {
+        const raw = localStorage.getItem('finflow_impulse_waitlist_v1');
+        if (raw) setWaitlist(JSON.parse(raw));
+      } catch {}
+    };
+    window.addEventListener('finflow_impulse_updated', syncFromStorage);
+    return () => window.removeEventListener('finflow_impulse_updated', syncFromStorage);
+  }, []);
+
+  const saveWaitlist = (nextList) => {
+    setWaitlist(nextList);
+    try {
+      localStorage.setItem('finflow_impulse_waitlist_v1', JSON.stringify(nextList));
+    } catch {}
+  };
+
+  const salaryVal = evaluateAmountExpression(monthlySalary) || 15000000;
+  const hourlyRate = Math.max(1, Math.round(salaryVal / 176)); // 22 ngày * 8h
+  const priceVal = evaluateAmountExpression(itemPrice) || 0;
+  const hoursNeeded = priceVal / hourlyRate;
+  const workDaysNeeded = hoursNeeded / 8;
+
+  const handleAddToWaitlist = (e) => {
+    if (e) e.preventDefault();
+    if (priceVal <= 0) return;
+    const entry = {
+      id: `imp_${Date.now()}`,
+      title: itemName.trim() || 'Món đồ định mua',
+      amount: priceVal,
+      hours: Number(hoursNeeded.toFixed(1)),
+      createdAt: Date.now()
+    };
+    const next = [entry, ...waitlist];
+    saveWaitlist(next);
+    setItemName('');
+    if (onShowToast) {
+      onShowToast(`Đã đưa "${entry.title}" vào Giỏ chờ 48h để hạ nhiệt cơn bốc đồng!`);
+    }
+  };
+
+  const handleSkipAndSave = (item) => {
+    const nextList = waitlist.filter((x) => x.id !== item.id);
+    saveWaitlist(nextList);
+    const nextSaved = totalSaved + (Number(item.amount) || 0);
+    setTotalSaved(nextSaved);
+    try {
+      localStorage.setItem('finflow_impulse_saved_v1', String(nextSaved));
+    } catch {}
+    if (onShowToast) {
+      onShowToast(`Tuyệt vời! Bạn đã giữ lại được ${formatVND(item.amount)} nhờ không mua bốc đồng!`);
+    }
+  };
+
+  const handleBuyConfirmed = (item) => {
+    const nextList = waitlist.filter((x) => x.id !== item.id);
+    saveWaitlist(nextList);
+    if (onBuyForReal) {
+      onBuyForReal({
+        title: item.title,
+        amount: item.amount,
+        type: 'expense',
+        category_id: 'cat_shopping',
+        wallet_id: 'w_bank'
+      });
+    }
+  };
+
+  return (
+    <div className="panel">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+              Chống mua bốc đồng (Quy đổi giờ công & Giỏ chờ 48h)
+            </h3>
+          </div>
+        </div>
+        {totalSaved > 0 && (
+          <span className="px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 text-xs font-mono-num font-bold">
+            Đã giữ lại: +{formatVND(totalSaved, hideBalance)}
+          </span>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+        <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+              Món định mua
+            </label>
+            <input
+              type="text"
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              placeholder="VD: Áo khoác, Tai nghe..."
+              className="w-full px-3 py-2 rounded-lg text-xs font-medium"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+              Giá món đồ
+            </label>
+            <input
+              type="text"
+              value={itemPrice}
+              onChange={(e) => setItemPrice(e.target.value)}
+              placeholder="VD: 500k, 1.2tr"
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono-num font-bold"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-400 mb-1">
+              Thu nhập tháng của bạn
+            </label>
+            <input
+              type="text"
+              value={monthlySalary}
+              onChange={(e) => {
+                setMonthlySalary(e.target.value);
+                try {
+                  localStorage.setItem('finflow_salary_ref', e.target.value);
+                } catch {}
+              }}
+              placeholder="VD: 15tr"
+              className="w-full px-3 py-2 rounded-lg text-xs font-mono-num font-bold"
+            />
+          </div>
+        </div>
+
+        <div className="lg:col-span-5 flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80">
+          <div>
+            <p className="text-[11px] text-slate-400">
+              1 giờ công = {formatVND(hourlyRate, hideBalance)}
+            </p>
+            <p className="text-xs sm:text-sm font-extrabold text-slate-900 dark:text-white mt-0.5">
+              Tiêu tốn{' '}
+              <span className="text-rose-600 dark:text-rose-400 font-mono-num">
+                {hoursNeeded.toFixed(1)} giờ làm
+              </span>{' '}
+              (~{workDaysNeeded.toFixed(1)} ngày công)
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleAddToWaitlist}
+            className="btn small shrink-0 cursor-pointer"
+          >
+            ⏳ Hoãn mua 48h
+          </button>
+        </div>
+      </div>
+
+      {waitlist.length > 0 && (
+        <div className="mt-3.5 pt-3 border-t border-slate-200/70 dark:border-slate-800">
+          <p className="text-xs font-bold text-slate-500 mb-2">
+            Giỏ chờ hạ nhiệt 48h ({waitlist.length} món đang cân nhắc):
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {waitlist.map((item) => {
+              const elapsedHours = Math.floor((Date.now() - (item.createdAt || Date.now())) / 3600000);
+              const remainingHours = Math.max(0, 48 - elapsedHours);
+              return (
+                <div
+                  key={item.id}
+                  className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                      {item.title} •{' '}
+                      <span className="font-mono-num text-rose-600 dark:text-rose-400">
+                        {formatVND(item.amount, hideBalance)}
+                      </span>
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      Mất {item.hours}h làm việc •{' '}
+                      {remainingHours > 0 ? `Còn chờ ${remainingHours}h` : 'Đã đủ 48h suy nghĩ'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleSkipAndSave(item)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-600 text-white text-[11px] font-bold cursor-pointer"
+                    >
+                      Bỏ qua (Giữ tiền)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleBuyConfirmed(item)}
+                      className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-semibold cursor-pointer"
+                    >
+                      Mua
+                    </button>
                   </div>
                 </div>
               );

@@ -60,7 +60,8 @@ import { CalendarLedgerView } from './components/CalendarLedgerView.jsx';
 import {
   SmartIncomeAllocator,
   MonthComparisonModule,
-  LifeOptimizationToolkit
+  LifeOptimizationToolkit,
+  ImpulseBuyGuard
 } from './components/SmartLifePlanner.jsx';
 import { Mascot, MASCOT_CATALOG } from './components/PageMascot.jsx';
 
@@ -88,7 +89,7 @@ const NAV_TABS = [
   { id: 'transactions', code: '02', label: 'Sổ giao dịch', shortLabel: 'Giao dịch', icon: ReceiptText },
   { id: 'budgets', code: '03', label: 'Ngân sách', shortLabel: 'Ngân sách', icon: PieChart },
   { id: 'goals', code: '04', label: 'Mục tiêu & Định kỳ', shortLabel: 'Mục tiêu', icon: PiggyBank },
-  { id: 'analytics', code: '05', label: 'Báo cáo', shortLabel: 'Báo cáo', icon: BarChart3 }
+  { id: 'analytics', code: '05', label: 'Chống bốc đồng & Báo cáo', shortLabel: 'Bốc đồng', icon: BarChart3 }
 ];
 
 const MONTH_OPTIONS = [
@@ -1371,6 +1372,16 @@ export default function App() {
                 </div>
               </section>
 
+              {/* Anti-Impulse Buying Guard right on the Dashboard */}
+              <ImpulseBuyGuard
+                hideBalance={hideBalance}
+                onShowToast={showToast}
+                onBuyForReal={(prefill) => {
+                  setEditingTx(prefill);
+                  setTxModalOpen(true);
+                }}
+              />
+
               {/* Optional Charts only when transactions exist */}
               {monthTransactions.length > 0 && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
@@ -2337,7 +2348,24 @@ export default function App() {
           {/* ==================== TAB 5: PHÂN TÍCH & CLOUD DB (ANALYTICS & DB) ==================== */}
           {activeTab === 'analytics' && (
             <div className="section-shell py-7 space-y-6">
-              {/* 1. Month-over-Month Comparison Module */}
+              {/* 0. Anti-Impulse Guard & 48h Cooling-Off Waitlist */}
+              <ImpulseBuyGuard
+                hideBalance={hideBalance}
+                onShowToast={showToast}
+                onBuyForReal={(prefill) => {
+                  setEditingTx(prefill);
+                  setTxModalOpen(true);
+                }}
+              />
+
+              {/* 1. Life Optimization Toolkit (Chống mua bốc đồng & Tối ưu) */}
+              <LifeOptimizationToolkit
+                totalNetWorth={totalNetWorth}
+                totalMonthlyBudget={totalMonthlyBudget}
+                hideBalance={hideBalance}
+              />
+
+              {/* 2. Month-over-Month Comparison Module */}
               <MonthComparisonModule
                 transactions={transactions}
                 categories={categories}
@@ -2353,13 +2381,6 @@ export default function App() {
                   });
                   setTxModalOpen(true);
                 }}
-              />
-
-              {/* 2. Life Optimization Toolkit */}
-              <LifeOptimizationToolkit
-                totalNetWorth={totalNetWorth}
-                totalMonthlyBudget={totalMonthlyBudget}
-                hideBalance={hideBalance}
               />
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -2522,6 +2543,25 @@ export default function App() {
         wallets={wallets}
         onSave={handleSaveTransaction}
         onCreateCategory={handleCreateCategory}
+        onDeferImpulse={(item) => {
+          try {
+            const raw = localStorage.getItem('finflow_impulse_waitlist_v1');
+            const list = raw ? JSON.parse(raw) : [];
+            const next = [
+              {
+                id: `imp_${Date.now()}`,
+                title: item.title,
+                amount: item.amount,
+                hours: item.hours,
+                createdAt: Date.now()
+              },
+              ...list
+            ];
+            localStorage.setItem('finflow_impulse_waitlist_v1', JSON.stringify(next));
+            window.dispatchEvent(new Event('finflow_impulse_updated'));
+          } catch {}
+          showToast(`Đã hoãn mua "${item.title}" vào Giỏ chờ 48h!`);
+        }}
       />
 
       {/* WALLET & TRANSFER MODAL */}
