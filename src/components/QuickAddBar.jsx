@@ -160,7 +160,7 @@ export function QuickAddBar({
         )}
       </form>
 
-      <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1">
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
         <span
           className="font-mono-num text-[11px] shrink-0 mr-1"
           style={{ color: 'var(--muted)' }}
