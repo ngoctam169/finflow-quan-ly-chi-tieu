@@ -92,12 +92,7 @@ export function HuashuTweaksPanel({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        bottom: 20,
-        right: 20,
-        zIndex: 45
-      }}
+      className="fixed bottom-16 lg:bottom-5 right-3 sm:right-6 z-40"
     >
       {open ? (
         <div
@@ -105,8 +100,8 @@ export function HuashuTweaksPanel({
             backgroundColor: 'var(--surface)',
             color: 'var(--ink)',
             border: '2px solid var(--rule-strong)',
-            padding: 18,
-            width: 310,
+            padding: 16,
+            width: 'min(310px, calc(100vw - 24px))',
             boxShadow: '6px 6px 0 var(--rule-strong)'
           }}
         >

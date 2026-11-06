@@ -321,8 +321,6 @@ export function Mascot({
   }, [reactions, onBoop]);
 
   const showingReaction = activeReaction !== null && reactions;
-  const sheet = showingReaction ? reactions : directions;
-  const index = showingReaction ? activeReaction : directionIndex;
 
   return (
     <div
@@ -337,17 +335,39 @@ export function Mascot({
         }
       }}
       title="Chạm vào linh vật để tương tác (chạm 4 lần liên tiếp sẽ làm bé chóng mặt!)"
-      className={`select-none cursor-pointer relative inline-block ${className}`}
+      className={`select-none cursor-pointer relative inline-block overflow-hidden ${className}`}
       style={{
         width: size,
         height: size,
-        backgroundImage: `url(${sheet})`,
-        backgroundRepeat: 'no-repeat',
-        ...spritePos(index),
         transform: boopTransform,
         transition: 'transform 110ms cubic-bezier(0.34, 1.56, 0.64, 1)'
       }}
-    />
+    >
+      {/* Base layer: 9-direction cursor tracking sprite */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `url(${directions})`,
+          backgroundRepeat: 'no-repeat',
+          ...spritePos(directionIndex),
+          opacity: showingReaction ? 0 : 1
+        }}
+      />
+      {/* Overlay layer: 9-reaction expression sprite (pre-mounted to prevent any image-swap flash) */}
+      {reactions && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `url(${reactions})`,
+            backgroundRepeat: 'no-repeat',
+            ...spritePos(showingReaction ? activeReaction : 0),
+            opacity: showingReaction ? 1 : 0
+          }}
+        />
+      )}
+    </div>
   );
 }
 
