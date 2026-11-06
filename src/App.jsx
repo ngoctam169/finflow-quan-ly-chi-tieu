@@ -67,16 +67,16 @@ const STORAGE_KEY = 'finflow_vn_state_v2_clean';
 const NAV_TABS = [
   { id: 'dashboard', code: '01', label: 'Tổng quan', shortLabel: 'Tổng quan', icon: LayoutDashboard },
   { id: 'transactions', code: '02', label: 'Sổ giao dịch', shortLabel: 'Giao dịch', icon: ReceiptText },
-  { id: 'budgets', code: '03', label: 'Phân bổ & Ngân sách', shortLabel: 'Ngân sách', icon: PieChart },
+  { id: 'budgets', code: '03', label: 'Ngân sách', shortLabel: 'Ngân sách', icon: PieChart },
   { id: 'goals', code: '04', label: 'Tích lũy & Định kỳ', shortLabel: 'Tích lũy', icon: PiggyBank },
   { id: 'analytics', code: '05', label: 'So sánh & Tối ưu', shortLabel: 'Tối ưu', icon: BarChart3 }
 ];
 
 const MONTH_OPTIONS = [
-  { value: '2026-11', label: 'Kỳ 11 / 2026 (Hiện tại)' },
-  { value: '2026-10', label: 'Kỳ 10 / 2026' },
-  { value: '2026-09', label: 'Kỳ 09 / 2026' },
-  { value: '2026-08', label: 'Kỳ 08 / 2026' },
+  { value: '2026-11', label: 'Tháng 11 / 2026' },
+  { value: '2026-10', label: 'Tháng 10 / 2026' },
+  { value: '2026-09', label: 'Tháng 09 / 2026' },
+  { value: '2026-08', label: 'Tháng 08 / 2026' },
   { value: 'ALL', label: 'Tất cả các kỳ' }
 ];
 
